@@ -1,20 +1,29 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import Landingpage from './screens/landingpage';
+import Login from './screens/login'; 
+import AdminHome from './screens/adminHome';
+import Signup from './screens/signup';
+import BursarHome from './screens/bursarHome';
+import RecordPayment from './bursarScreens/recordPayment';
+import ProcessProduce from './bursarScreens/produce';
+import GenerateReceipt from './bursarScreens/generateReceipt';
 
+const Stack = createStackNavigator();
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Landing" component={Landingpage} />
+        <Stack.Screen name="signup" component={Signup} />
+        <Stack.Screen name="login" component={Login} />
+        <Stack.Screen name="bursarHome" component={BursarHome} />
+        <Stack.Screen name="adminHome" component={AdminHome} />
+        <Stack.Screen name="RecordPayment" component={RecordPayment} options={{ title: 'Record Payment' }} />
+        <Stack.Screen name="ProcessProduce" component={ProcessProduce} options={{ title: 'Process Produce' }} />
+        <Stack.Screen name="GenerateReceipt" component={GenerateReceipt} options={{ title: 'Generate Receipt' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+ );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
