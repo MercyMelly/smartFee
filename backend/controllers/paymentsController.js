@@ -90,7 +90,7 @@ exports.getTodayPayments = async (req, res) => {
 
     const payments = await Payment.find({
       createdAt: { $gte: start, $lte: end }
-    }).populate('student', 'fullName'); // joins student name
+    }).populate('student', 'fullName'); 
 
     const formatted = payments.map(p => ({
       id: p._id,

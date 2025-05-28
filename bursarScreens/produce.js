@@ -6,21 +6,18 @@ const ProcessProduce = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const [pendingValuations, setPendingValuations] = useState([]);
-  const [valuationMap, setValuationMap] = useState({}); // To store assigned values
+  const [valuationMap, setValuationMap] = useState({});
 
   useEffect(() => {
-    // Replace with actual API call to fetch pending produce valuations
     fetchPendingValuationsData();
   }, []);
 
   const fetchPendingValuationsData = async () => {
-    // Simulate API call
     setPendingValuations([
       { id: 'p1', parentName: 'Charlie Brown', produce: '3 Bags Beans', marketRate: 3000 },
       { id: 'p2', parentName: 'Diana Miller', produce: '1 Truck Firewood', marketRate: 10000 },
       { id: 'p3', parentName: 'Lucy Van Pelt', produce: '5 Sacks Millet', marketRate: 1500 },
     ]);
-    // Initialize valuation map
     const initialValuationMap = {};
     [...pendingValuations].forEach(item => {
       initialValuationMap[item.id] = '';
@@ -38,12 +35,10 @@ const ProcessProduce = () => {
       alert('Please enter a valid value for the produce.');
       return;
     }
-    // Implement API call to record the produce payment with the assigned value
     console.log('Processing Produce:', {
       valuationId: item.id,
       assignedValue,
     });
-    // After successful processing, update the list or navigate back
     const updatedValuations = pendingValuations.filter(val => val.id !== item.id);
     setPendingValuations(updatedValuations);
   };

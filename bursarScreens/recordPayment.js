@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; // You might need to install this: npm install @react-native-picker/picker
+import { Picker } from '@react-native-picker/picker'; 
 import { useNavigation } from '@react-navigation/native';
 
 const RecordPayment = () => {
@@ -12,7 +12,6 @@ const RecordPayment = () => {
   const [cashierNotes, setCashierNotes] = useState('');
 
   const handleRecordPayment = async () => {
-    // Implement API call to record the payment
     console.log('Recording Payment:', {
       studentId,
       paymentMethod,
@@ -20,7 +19,6 @@ const RecordPayment = () => {
       mpesaTransactionId,
       cashierNotes,
     });
-    // After successful recording, maybe navigate back or show a success message
     navigation.goBack();
   };
 

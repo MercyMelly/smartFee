@@ -9,31 +9,26 @@ const BursarHome = () => {
   const [pendingProduceValuations, setPendingProduceValuations] = useState([]); // Sample data
 
   useEffect(() => {
-    // Replace with actual API calls to fetch data
     fetchTodayPayments();
     fetchPendingProduceValuations();
   }, []);
 
   const fetchTodayPayments = async () => {
-    // Simulate API call
     setTodayPayments([
       { id: '1', studentName: 'Alice Smith', amountPaid: 5000, paymentMethod: 'MPESA' },
       { id: '2', studentName: 'Bob Johnson', amountPaid: '2 Bags Maize', paymentMethod: 'Produce' },
-      // ... more payments
     ]);
   };
 
   const fetchPendingProduceValuations = async () => {
-    // Simulate API call
     setPendingProduceValuations([
       { id: 'p1', parentName: 'Charlie Brown', produce: '3 Bags Beans' },
       { id: 'p2', parentName: 'Diana Miller', produce: '1 Truck Firewood' },
-      // ... more pending valuations
     ]);
   };
 
   const navigateToProcessProduce = () => {
-    navigation.navigate('ProcessProduce'); // Define this screen
+    navigation.navigate('ProcessProduce'); 
   };
 
   const renderPaymentItem = ({ item }) => (
@@ -78,7 +73,6 @@ const BursarHome = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Today's Payments */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Today's Payments</Text>
         {todayPayments.length > 0 ? (
@@ -92,7 +86,6 @@ const BursarHome = () => {
         )}
       </View>
 
-      {/* Pending Produce Valuations */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pending Produce Valuations</Text>
         {pendingProduceValuations.length > 0 ? (

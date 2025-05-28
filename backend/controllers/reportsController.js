@@ -52,7 +52,7 @@ exports.generateBalanceReportPDF = async (req, res) => {
         if (err) {
           console.error('Download error:', err);
         }
-        fs.unlinkSync(filePath); // delete after sending
+        fs.unlinkSync(filePath); 
       });
     });
   } catch (err) {
@@ -100,13 +100,11 @@ exports.getDefaultersList = async (req, res) => {
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    // TODAY’S RANGE
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    // TOTAL PAID TODAY
     const todayPayments = await Payment.aggregate([
       {
         $match: {
@@ -122,7 +120,6 @@ exports.getDashboardStats = async (req, res) => {
       }
     ]);
 
-    // OUTSTANDING BALANCES
     const outstanding = await Student.aggregate([
       {
         $group: {
@@ -132,7 +129,6 @@ exports.getDashboardStats = async (req, res) => {
       }
     ]);
 
-    // TOTAL STUDENTS
     const studentCount = await Student.countDocuments();
 
     res.json({

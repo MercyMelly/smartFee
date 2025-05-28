@@ -28,10 +28,6 @@ const GenerateReceipt = () => {
         cashierNotes: 'Paid in full',
       };
 
-      // Normally you would fetch from an API like:
-      // const response = await fetch(`https://yourapi.com/receipt/${transactionId}`);
-      // const data = await response.json();
-
       setReceiptData(dummyData);
     } catch (err) {
       setError('Receipt not found.');
