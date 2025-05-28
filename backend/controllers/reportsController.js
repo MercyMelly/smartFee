@@ -1,4 +1,5 @@
 const Student = require('../models/studentsDB');
+const PDFDocument = require('pdfkit');
 
 exports.getOutstandingByClass = async (req, res) => {
   try {
@@ -22,9 +23,6 @@ exports.getOutstandingByClass = async (req, res) => {
   }
 };
 
-
-
-const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
@@ -140,5 +138,30 @@ exports.getDashboardStats = async (req, res) => {
   } catch (err) {
     console.error('Dashboard stats error:', err);
     res.status(500).json({ message: 'Failed to get dashboard stats', error: err.message });
+  }
+};
+
+exports.downloadOutstandingPDF = async (req, res) => {
+  try {
+    const students = await Student.find({ balance: { $gt: 0 } }).sort({ className: 1 });
+
+    const doc = new PDFDocument();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=outstanding_balances.pdf');
+
+    doc.pipe(res);
+
+    doc.fontSize(18).text('Outstanding Fee Balances Report', { align: 'center' });
+    doc.moveDown();
+
+    students.forEach((s, i) => {
+      doc.fontSize(12).text(`${i + 1}. ${s.fullName} | Class: ${s.className} | Balance: KES ${s.balance}`);
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error('PDF export error:', err);
+    res.status(500).json({ message: 'Failed to generate PDF', error: err.message });
   }
 };

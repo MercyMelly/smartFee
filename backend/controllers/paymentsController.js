@@ -49,6 +49,16 @@ exports.addPayment = async (req, res) => {
     student.balance -= totalAmount;
     await student.save();
 
+    if (student.balance > 0 && student.parentPhone) {
+      const smsMessage = `Hello ${student.parentName}, your child ${student.fullName} has an outstanding balance of KES ${student.balance}. Please clear it.`;
+      try {
+        await sendSMS(student.parentPhone, smsMessage);
+        console.log('SMS sent successfully.');
+      } catch (err) {
+        console.error('Failed to send SMS:', err.message);
+      }
+    }
+
     res.status(201).json({
       message: 'Payment recorded',
       payment: newPayment,
@@ -67,16 +77,6 @@ exports.getPaymentsByStudent = async (req, res) => {
   } catch (error) {
     console.error('Fetch error:', error);
     res.status(500).json({ message: 'Something went wrong', error: error.message });
-  }
-};
-
-const fetchTodayPayments = async () => {
-  try {
-    const response = await fetch('http://192.168.0.105:3000/api/payments/today');
-    const data = await response.json();
-    setTodayPayments(data);
-  } catch (error) {
-    console.error('Error fetching today’s payments:', error);
   }
 };
 
@@ -123,15 +123,7 @@ exports.getPendingProduce = async (req, res) => {
     res.status(500).json({ message: 'Error fetching pending produce', error: err.message });
   }
 };
-const fetchPendingProduceValuations = async () => {
-  try {
-    const response = await fetch('http://192.168.0.105:3000/api/payments/pending-produce');
-    const data = await response.json();
-    setPendingProduceValuations(data);
-  } catch (error) {
-    console.error('Error fetching pending produce:', error);
-  }
-};
+
 
 exports.getOutstandingFeesByClass = async (req, res) => {
   try {
@@ -169,3 +161,32 @@ exports.getTotalOutstandingFees = async (req, res) => {
     res.status(500).json({ message: 'Error fetching total outstanding fees', error: err.message });
   }
 };
+
+// exports.filterPayments = async (req, res) => {
+//   try {
+//     const { paymentMethod, startDate, endDate, className, produceType } = req.query;
+
+//     const query = {};
+
+//     if (paymentMethod) query.paymentMethod = paymentMethod;
+//     if (produceType) query.produceType = produceType;
+//     if (startDate && endDate) {
+//       query.createdAt = {
+//         $gte: new Date(startDate),
+//         $lte: new Date(endDate)
+//       };
+//     }
+
+//     if (className) {
+//       const students = await Student.find({ className }).select('_id');
+//       query.student = { $in: students.map(s => s._id) };
+//     }
+
+//     const payments = await Payment.find(query).populate('student', 'fullName className');
+
+//     res.json(payments);
+//   } catch (err) {
+//     console.error('Filter payments error:', err);
+//     res.status(500).json({ message: 'Failed to filter payments', error: err.message });
+//   }
+// };

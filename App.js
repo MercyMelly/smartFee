@@ -7,8 +7,11 @@ import AdminHome from './screens/adminHome';
 import Signup from './screens/signup';
 import BursarHome from './screens/bursarHome';
 import RecordPayment from './bursarScreens/recordPayment';
-import ProcessProduce from './bursarScreens/produce';
-import GenerateReceipt from './bursarScreens/generateReceipt';
+import StudentScreen from './bursarScreens/studentscreens';
+import StudentDetails from './bursarScreens/studentdetails';
+import MakePayment from './bursarScreens/makepayment';
+
+
 
 const Stack = createStackNavigator();
 export default function App() {
@@ -21,8 +24,9 @@ export default function App() {
         <Stack.Screen name="bursarHome" component={BursarHome} />
         <Stack.Screen name="adminHome" component={AdminHome} />
         <Stack.Screen name="RecordPayment" component={RecordPayment} options={{ title: 'Record Payment' }} />
-        <Stack.Screen name="ProcessProduce" component={ProcessProduce} options={{ title: 'Process Produce' }} />
-        <Stack.Screen name="GenerateReceipt" component={GenerateReceipt} options={{ title: 'Generate Receipt' }} />
+        <Stack.Screen name="StudentList" component={StudentScreen} />
+        <Stack.Screen name="StudentDetails" component={StudentDetails} />
+        <Stack.Screen name="makePayment" component={MakePayment} />
       </Stack.Navigator>
     </NavigationContainer>
  );

@@ -20,13 +20,13 @@ const authRoutes = require('../routes/routes');
 const studentRoutes = require('../routes/students');
 const paymentRoutes = require('../routes/payments');
 const reportsRoutes = require('../routes/reports');
+const dashboardRoutes = require('../routes/dashboard');
 
 app.use('/api', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportsRoutes);
-
-
+app.use('/api/dashboard', dashboardRoutes);
 // app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 
 app.listen(3000, '0.0.0.0', () => {

@@ -6,5 +6,7 @@ router.post('/add', paymentsController.addPayment);
 router.get('/student/:studentId', paymentsController.getPaymentsByStudent);
 router.get('/today', paymentsController.getTodayPayments);
 router.get('/pending-produce', paymentsController.getPendingProduce);
+// router.get('/filter',paymentsController.filterPayments);
+
 
 module.exports = router;
