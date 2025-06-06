@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import axios from 'axios';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const AdminDashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -8,7 +10,7 @@ const AdminDashboard = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await axios.get('http://192.168.0.105:3000/api/dashboard/summary'); 
+      const res = await axios.get('http://192.168.0.27:3000/api/dashboard/summary'); 
       setSummary(res.data);
     } catch (error) {
       console.error('Failed to fetch dashboard summary:', error.message);

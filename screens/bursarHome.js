@@ -1,212 +1,164 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const BursarHome = () => {
+const BursarDashboard = () => {
   const navigation = useNavigation();
-  const [todayPayments, setTodayPayments] = useState([]); // Sample data
-  const [pendingProduceValuations, setPendingProduceValuations] = useState([]); // Sample data
+  const [stats, setStats] = useState({ collected: 0, expected: 0, outstanding: 0 });
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   useEffect(() => {
-    fetchTodayPayments();
-    fetchPendingProduceValuations();
+    // Later, fetch from backend
+    setStats({ collected: 254000, expected: 400000, outstanding: 146000 });
   }, []);
 
-  const fetchTodayPayments = async () => {
-    setTodayPayments([
-      { id: '1', studentName: 'Alice Smith', amountPaid: 5000, paymentMethod: 'MPESA' },
-      { id: '2', studentName: 'Bob Johnson', amountPaid: '2 Bags Maize', paymentMethod: 'Produce' },
-    ]);
-  };
-
-  const fetchPendingProduceValuations = async () => {
-    setPendingProduceValuations([
-      { id: 'p1', parentName: 'Charlie Brown', produce: '3 Bags Beans' },
-      { id: 'p2', parentName: 'Diana Miller', produce: '1 Truck Firewood' },
-    ]);
-  };
-
-  const navigateToProcessProduce = () => {
-    navigation.navigate('ProcessProduce'); 
-  };
-
-  const renderPaymentItem = ({ item }) => (
-    <View style={styles.paymentItem}>
-      <Text style={styles.paymentStudent}>{item.studentName}</Text>
-      <Text style={styles.paymentAmount}>{item.amountPaid}</Text>
-      <Text style={styles.paymentMethod}>{item.paymentMethod}</Text>
+  const StatCard = ({ icon, title, value, color }) => (
+    <View style={[styles.statCard, { backgroundColor: color }]}>
+      <Icon name={icon} size={30} color="#fff" />
+      <Text style={styles.statValue}>KES {value.toLocaleString()}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
     </View>
   );
 
-  const renderPendingValuationItem = ({ item }) => (
-    <View style={styles.pendingItem}>
-      <Text style={styles.pendingParent}>{item.parentName}</Text>
-      <Text style={styles.pendingProduce}>{item.produce}</Text>
-      <TouchableOpacity style={styles.valuationButton} onPress={navigateToProcessProduce}>
-        <Text style={styles.valuationButtonText}>Value</Text>
-      </TouchableOpacity>
-    </View>
+  const ActionButton = ({ icon, label, onPress }) => (
+    <TouchableOpacity style={styles.actionCard} onPress={onPress}>
+      <Icon name={icon} size={30} color="#fff" />
+      <Text style={styles.actionText}>{label}</Text>
+    </TouchableOpacity>
   );
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bursar Dashboard</Text>
-        <Text style={styles.headerDate}>{new Date().toLocaleDateString()}</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+        <Text style={styles.title}>{getGreeting()}, Bursar</Text>
+        <Text style={styles.subTitle}>{new Date().toDateString()}</Text>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Icon name="plus-circle" size={30} color="#fff" />
-          <Text style={styles.actionButtonText}>Record Payment</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={navigateToProcessProduce}>
-          <Icon name="leaf" size={30} color="#fff" />
-          <Text style={styles.actionButtonText}>Process Produce</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Icon name="file-text" size={30} color="#fff" />
-          <Text style={styles.actionButtonText}>Generate Receipt</Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={styles.sectionHeader}>📊 Financial Summary</Text>
+        <View style={styles.statsRow}>
+          <StatCard icon="cash" title="Collected" value={stats.collected} color="#4caf50" />
+          <StatCard icon="chart-line" title="Expected" value={stats.expected} color="#2196f3" />
+        </View>
+        <StatCard icon="alert-circle" title="Outstanding" value={stats.outstanding} color="#f44336" />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Payments</Text>
-        {todayPayments.length > 0 ? (
-          <FlatList
-            data={todayPayments}
-            renderItem={renderPaymentItem}
-            keyExtractor={(item) => item.id}
-          />
-        ) : (
-          <Text>No payments recorded today.</Text>
-        )}
-      </View>
+        <Text style={styles.sectionHeader}>🎯 Quick Actions</Text>
+        <View style={styles.quickActions}>
+          <ActionButton icon="account-plus" label="Add Student" onPress={() => navigation.navigate('addStudent')} />
+          <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
+          <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produce')} />
+          <ActionButton icon="file-document" label="Receipt" onPress={() => navigation.navigate('generateReceipt')} />
+        </View>
+      </ScrollView>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pending Produce Valuations</Text>
-        {pendingProduceValuations.length > 0 ? (
-          <FlatList
-            data={pendingProduceValuations}
-            renderItem={renderPendingValuationItem}
-            keyExtractor={(item) => item.id}
-          />
-        ) : (
-          <Text>No produce awaiting valuation.</Text>
-        )}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+          <Icon name="view-dashboard" size={28} color="#2e7d32" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('studentsList')}>
+          <Icon name="account-group" size={28} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('payments')}>
+          <Icon name="cash" size={28} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('produce')}>
+          <Icon name="scale-balance" size={28} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('settings')}>
+          <Icon name="cog-outline" size={28} color="#777" />
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f4f4f4',
-    padding: 20,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerTitle: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    marginHorizontal: 15,
+    marginTop: 20,
+    color: '#2e7d32',
+    textAlign: 'center',
   },
-  headerDate: {
-    fontSize: 16,
+  subTitle: {
+    fontSize: 14,
+    marginHorizontal: 15,
+    marginBottom: 10,
     color: '#777',
   },
-  quickActions: {
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 15,
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#333',
+  },
+  statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 30,
+    marginHorizontal: 10,
   },
-  actionButton: {
-    backgroundColor: '#2e7d32',
+  statCard: {
+    flex: 1,
+    margin: 5,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    width: '30%',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 25,
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 3,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+  statTitle: {
+    fontSize: 14,
+    color: '#fff',
+    marginTop: 5,
   },
-  paymentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  paymentStudent: {
-    flex: 2,
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  paymentAmount: {
-    flex: 1,
-    textAlign: 'right',
-    color: 'green',
-  },
-  paymentMethod: {
-    flex: 1,
-    textAlign: 'right',
-    color: '#777',
-  },
-  pendingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  pendingParent: {
-    flex: 2,
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  pendingProduce: {
-    flex: 2,
-    color: '#777',
-  },
-  valuationButton: {
-    backgroundColor: 'green',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-  },
-  valuationButtonText: {
+  statValue: {
+    fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginVertical: 10,
+  },
+  actionCard: {
+    backgroundColor: '#2e7d32',
+    width: '45%',
+    padding: 15,
+    margin: 5,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  actionText: {
+    color: '#fff',
+    marginTop: 8,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#ccc',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
   },
 });
 
-export default BursarHome;
+export default BursarDashboard;

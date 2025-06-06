@@ -5,7 +5,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 
-const SignupSchema = Yup.object().shape({
+const UserDetailSchema = Yup.object().shape({
   fullName: Yup.string()
     .min(2, 'Full name too short')
     .max(50, 'Full name too long')
@@ -51,7 +51,7 @@ export default function Signup({ navigation }) {
         password,
         role,
       };
-      const res = await axios.post('http://192.168.0.105:3000/api/signup', userData)
+      const res = await axios.post('http://192.168.0.27:3000/api/signup', userData)
       {console.log(res.data)};
         Alert.alert('User created successfully', 'You can now login with your credentials',[
         {
@@ -75,7 +75,7 @@ export default function Signup({ navigation }) {
           confirmPassword: '',
           role: '',
         }}
-        validationSchema={SignupSchema}
+        validationSchema={UserDetailSchema}
         onSubmit={handleSignup}
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (

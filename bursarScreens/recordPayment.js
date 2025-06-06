@@ -2,103 +2,167 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker'; 
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const RecordPayment = () => {
   const navigation = useNavigation();
   const [studentId, setStudentId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('MPESA');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [mpesaTransactionId, setMpesaTransactionId] = useState('');
-  const [cashierNotes, setCashierNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('mpesa');
+  const [amount, setAmount] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
+  const [produceType, setProduceType] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [unitValue, setUnitValue] = useState('');
+  const [bankName, setBankName] = useState('');
 
   const handleRecordPayment = async () => {
-    console.log('Recording Payment:', {
+    if (!studentId || !paymentMethod ||
+        (paymentMethod === 'produce' && (!produceType || !quantity || !unitValue)) ||
+        ((paymentMethod === 'mpesa' || paymentMethod === 'bank') && (!amount || !referenceNumber)) ||
+        (paymentMethod === 'bank' && !bankName)) {
+      alert('Please fill all required fields.');
+      return;
+    }
+
+    const payload = {
       studentId,
       paymentMethod,
-      amountPaid,
-      mpesaTransactionId,
-      cashierNotes,
-    });
-    navigation.goBack();
+      produceType: paymentMethod === 'produce' ? produceType : null,
+      quantity: paymentMethod === 'produce' ? Number(quantity) : null,
+      unitValue: paymentMethod === 'produce' ? Number(unitValue) : null,
+      amount: paymentMethod !== 'produce' ? Number(amount) : parseFloat(quantity) * parseFloat(unitValue),
+      referenceNumber,
+      bankName: paymentMethod === 'bank' ? bankName : null,
+    };
+
+    try {
+      const response = await fetch('http://192.168.0.27:3000/api/payments/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Payment recorded successfully.');
+        navigation.goBack();
+      } else {
+        alert(data.message || 'Failed to record payment.');
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Record New Payment</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.header}>Record Payment</Text>
 
-      <Text style={styles.label}>Student ID:</Text>
-      <TextInput
-        style={styles.input}
-        value={studentId}
-        onChangeText={setStudentId}
-        placeholder="Enter Student ID"
-        keyboardType="default"
-      />
+        <Text style={styles.label}>Student ID</Text>
+        <TextInput
+          style={styles.input}
+          value={studentId}
+          onChangeText={setStudentId}
+          placeholder="Enter student ID"
+        />
 
-      <Text style={styles.label}>Payment Method:</Text>
-      <Picker
-        selectedValue={paymentMethod}
-        onValueChange={(itemValue) => setPaymentMethod(itemValue)}
-        style={styles.picker}
-      >
-        <Picker.Item label="MPESA" value="MPESA" />
-        <Picker.Item label="Cash" value="Cash" />
-      </Picker>
+        <Text style={styles.label}>Payment Method</Text>
+        <Picker
+          selectedValue={paymentMethod}
+          onValueChange={(itemValue) => setPaymentMethod(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Mpesa" value="mpesa" />
+          <Picker.Item label="Bank" value="bank" />
+          <Picker.Item label="Produce" value="produce" />
+        </Picker>
 
-      <Text style={styles.label}>Amount Paid (KES):</Text>
-      <TextInput
-        style={styles.input}
-        value={amountPaid}
-        onChangeText={setAmountPaid}
-        placeholder="Enter Amount"
-        keyboardType="numeric"
-      />
+        {paymentMethod === 'produce' && (
+          <>
+            <Text style={styles.label}>Produce Type</Text>
+            <TextInput
+              style={styles.input}
+              value={produceType}
+              onChangeText={setProduceType}
+              placeholder="E.g. Maize"
+            />
 
-      {paymentMethod === 'MPESA' && (
-        <>
-          <Text style={styles.label}>MPESA Transaction ID:</Text>
-          <TextInput
-            style={styles.input}
-            value={mpesaTransactionId}
-            onChangeText={setMpesaTransactionId}
-            placeholder="Enter MPESA Transaction ID"
-            keyboardType="default"
-          />
-        </>
-      )}
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              value={quantity}
+              onChangeText={setQuantity}
+              placeholder="Enter quantity"
+              keyboardType="numeric"
+            />
 
-      <Text style={styles.label}>Notes:</Text>
-      <TextInput
-        style={styles.textArea}
-        value={cashierNotes}
-        onChangeText={setCashierNotes}
-        placeholder="Any additional notes"
-        multiline
-        numberOfLines={4}
-      />
+            <Text style={styles.label}>Unit Value</Text>
+            <TextInput
+              style={styles.input}
+              value={unitValue}
+              onChangeText={setUnitValue}
+              placeholder="Enter unit value (KES)"
+              keyboardType="numeric"
+            />
+          </>
+        )}
 
-      <TouchableOpacity style={styles.recordButton} onPress={handleRecordPayment}>
-        <Text style={styles.recordButtonText}>Record Payment</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {(paymentMethod === 'mpesa' || paymentMethod === 'bank') && (
+          <>
+            <Text style={styles.label}>Amount (KES)</Text>
+            <TextInput
+              style={styles.input}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Enter amount"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>Reference Number</Text>
+            <TextInput
+              style={styles.input}
+              value={referenceNumber}
+              onChangeText={setReferenceNumber}
+              placeholder="Enter reference number"
+            />
+          </>
+        )}
+
+        {paymentMethod === 'bank' && (
+          <>
+            <Text style={styles.label}>Bank Name</Text>
+            <TextInput
+              style={styles.input}
+              value={bankName}
+              onChangeText={setBankName}
+              placeholder="Enter bank name"
+            />
+          </>
+        )}
+
+        <TouchableOpacity style={styles.button} onPress={handleRecordPayment}>
+          <Text style={styles.buttonText}>Record Payment</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f4f4',
     padding: 20,
+    backgroundColor: '#f4f4f4',
   },
   header: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    color: '#555',
     marginBottom: 5,
   },
   input: {
@@ -110,33 +174,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   picker: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
     marginBottom: 15,
-    backgroundColor: '#fff',
-    color: '#555',
   },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-    textAlignVertical: 'top', // For Android multiline alignment
-    minHeight: 80,
-  },
-  recordButton: {
-    backgroundColor: 'green',
+  button: {
+    backgroundColor: '#2e7d32',
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  recordButtonText: {
+  buttonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 16,
   },
 });
 

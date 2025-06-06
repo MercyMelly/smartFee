@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import PaymentHistory from './paymentHistory';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const MakePayment = ({ route, navigation }) => {
   const { student } = route.params;
@@ -45,7 +48,7 @@ const MakePayment = ({ route, navigation }) => {
     };
 
     try {
-      const response = await fetch('http://192.168.0.105:3000/api/payments', {
+      const response = await fetch('http://192.168.0.27:3000/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -54,7 +57,7 @@ const MakePayment = ({ route, navigation }) => {
 
       if (response.ok) {
         Alert.alert('Success', 'Payment recorded successfully!', [
-          { text: 'OK', onPress: () => navigation.goBack() },
+          { text: 'OK', onPress: () => navigation.navigate(PaymentHistory) },
         ]);
       } else {
         Alert.alert('Error', data.message || 'Failed to record payment');
@@ -65,87 +68,89 @@ const MakePayment = ({ route, navigation }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Make Payment for {student.fullName}</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Make Payment for {student.fullName}</Text>
 
-      <Text style={styles.label}>Payment Method</Text>
-      <Picker
-        selectedValue={paymentMethod}
-        onValueChange={(itemValue) => setPaymentMethod(itemValue)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Mpesa" value="mpesa" />
-        <Picker.Item label="Bank" value="bank" />
-        <Picker.Item label="Produce" value="produce" />
-      </Picker>
+        <Text style={styles.label}>Payment Method</Text>
+        <Picker
+          selectedValue={paymentMethod}
+          onValueChange={(itemValue) => setPaymentMethod(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Mpesa" value="mpesa" />
+          <Picker.Item label="Bank" value="bank" />
+          <Picker.Item label="Produce" value="produce" />
+        </Picker>
 
-      {paymentMethod === 'produce' && (
-        <>
-          <Text style={styles.label}>Produce Type</Text>
-          <TextInput
-            style={styles.input}
-            value={produceType}
-            onChangeText={setProduceType}
-            placeholder="E.g. Maize, Beans"
-          />
+        {paymentMethod === 'produce' && (
+          <>
+            <Text style={styles.label}>Produce Type</Text>
+            <TextInput
+              style={styles.input}
+              value={produceType}
+              onChangeText={setProduceType}
+              placeholder="E.g. Maize, Beans"
+            />
 
-          <Text style={styles.label}>Quantity</Text>
-          <TextInput
-            style={styles.input}
-            value={quantity}
-            onChangeText={setQuantity}
-            placeholder="Enter quantity"
-            keyboardType="numeric"
-          />
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              value={quantity}
+              onChangeText={setQuantity}
+              placeholder="Enter quantity"
+              keyboardType="numeric"
+            />
 
-          <Text style={styles.label}>Unit Value (KES)</Text>
-          <TextInput
-            style={styles.input}
-            value={unitValue}
-            onChangeText={setUnitValue}
-            placeholder="Enter unit value"
-            keyboardType="numeric"
-          />
-        </>
-      )}
+            <Text style={styles.label}>Unit Value (KES)</Text>
+            <TextInput
+              style={styles.input}
+              value={unitValue}
+              onChangeText={setUnitValue}
+              placeholder="Enter unit value"
+              keyboardType="numeric"
+            />
+          </>
+        )}
 
-      {(paymentMethod === 'mpesa' || paymentMethod === 'bank') && (
-        <>
-          <Text style={styles.label}>Amount (KES)</Text>
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="Enter amount"
-            keyboardType="numeric"
-          />
+        {(paymentMethod === 'mpesa' || paymentMethod === 'bank') && (
+          <>
+            <Text style={styles.label}>Amount (KES)</Text>
+            <TextInput
+              style={styles.input}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Enter amount"
+              keyboardType="numeric"
+            />
 
-          <Text style={styles.label}>Reference Number</Text>
-          <TextInput
-            style={styles.input}
-            value={referenceNumber}
-            onChangeText={setReferenceNumber}
-            placeholder="Enter reference number"
-          />
-        </>
-      )}
+            <Text style={styles.label}>Reference Number</Text>
+            <TextInput
+              style={styles.input}
+              value={referenceNumber}
+              onChangeText={setReferenceNumber}
+              placeholder="Enter reference number"
+            />
+          </>
+        )}
 
-      {paymentMethod === 'bank' && (
-        <>
-          <Text style={styles.label}>Bank Name</Text>
-          <TextInput
-            style={styles.input}
-            value={bankName}
-            onChangeText={setBankName}
-            placeholder="Enter bank name"
-          />
-        </>
-      )}
+        {paymentMethod === 'bank' && (
+          <>
+            <Text style={styles.label}>Bank Name</Text>
+            <TextInput
+              style={styles.input}
+              value={bankName}
+              onChangeText={setBankName}
+              placeholder="Enter bank name"
+            />
+          </>
+        )}
 
-      <TouchableOpacity style={styles.button} onPress={handlePaymentSubmit}>
-        <Text style={styles.buttonText}>Submit Payment</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.button} onPress={handlePaymentSubmit}>
+          <Text style={styles.buttonText}>Submit Payment</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

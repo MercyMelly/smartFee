@@ -5,7 +5,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LoginSchema = Yup.object().shape({
+const UserDetailSchema = Yup.object().shape({
   email: Yup.string()
     .email('Enter a valid email')
     .required('Email is required'),
@@ -19,7 +19,7 @@ export default function Login({ navigation }) {
 
   const handleLogin = async (values, { setSubmitting }) => {
     try {
-      const res = await axios.post('http://192.168.0.105:3000/api/login', values); 
+      const res = await axios.post('http://192.168.0.27:3000/api/login', values); 
       const { token, role } = res.data;
         console.log('Login API response:', res.data);  
       await AsyncStorage.setItem('token', token);
@@ -49,7 +49,7 @@ export default function Login({ navigation }) {
 r
       <Formik
         initialValues={{ email: '', password: '' }}
-        validationSchema={LoginSchema}
+        validationSchema={UserDetailSchema}
         onSubmit={handleLogin}
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (

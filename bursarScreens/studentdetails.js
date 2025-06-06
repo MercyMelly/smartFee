@@ -20,6 +20,7 @@ const StudentDetails = ({ route }) => {
 
   useEffect(() => {
     fetchPayments();
+    
   }, []);
 
   const renderPayment = ({ item }) => (
@@ -38,6 +39,7 @@ const StudentDetails = ({ route }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.name}>{student.fullName}</Text>
+      <Text style={styles.info}>Admission Number: {student.admissionNumber}</Text>
       <Text style={styles.info}>Parent: {student.parentName}</Text>
       <Text style={styles.info}>Phone: {student.parentPhone}</Text>
       <Text style={styles.info}>Class: {student.className}</Text>

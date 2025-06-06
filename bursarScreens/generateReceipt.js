@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const GenerateReceipt = () => {
   const navigation = useNavigation();
@@ -18,50 +19,48 @@ const GenerateReceipt = () => {
     setReceiptData(null);
 
     try {
-      // Simulate fetching data from an API
-      const dummyData = {
-        studentId: 'STU123',
-        paymentMethod: 'MPESA',
-        amountPaid: 4500,
-        date: '2025-05-18',
-        transactionId: transactionId,
-        cashierNotes: 'Paid in full',
-      };
+      const response = await fetch(`http://192.168.0.27:3000/api/payments/receipt/${transactionId}`);
+      if (!response.ok) {
+        throw new Error('Receipt not found');
+      }
 
-      setReceiptData(dummyData);
+      const data = await response.json();
+      setReceiptData(data);
     } catch (err) {
-      setError('Receipt not found.');
+      setError(err.message || 'Error fetching receipt');
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Generate Receipt</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.header}>Generate Receipt</Text>
 
-      <TextInput
-        style={styles.input}
-        value={transactionId}
-        onChangeText={setTransactionId}
-        placeholder="Enter Transaction ID"
-      />
+        <TextInput
+          style={styles.input}
+          value={transactionId}
+          onChangeText={setTransactionId}
+          placeholder="Enter Transaction ID"
+        />
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleSearchTransaction}>
-        <Text style={styles.buttonText}>Search</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleSearchTransaction}>
+          <Text style={styles.buttonText}>Search</Text>
+        </TouchableOpacity>
 
-      {receiptData && (
-        <View style={styles.receiptBox}>
-          <Text style={styles.receiptItem}>Transaction ID: {receiptData.transactionId}</Text>
-          <Text style={styles.receiptItem}>Student ID: {receiptData.studentId}</Text>
-          <Text style={styles.receiptItem}>Payment Method: {receiptData.paymentMethod}</Text>
-          <Text style={styles.receiptItem}>Amount Paid: KES {receiptData.amountPaid}</Text>
-          <Text style={styles.receiptItem}>Date: {receiptData.date}</Text>
-          <Text style={styles.receiptItem}>Notes: {receiptData.cashierNotes}</Text>
-        </View>
-      )}
-    </ScrollView>
+        {receiptData && (
+          <View style={styles.receiptBox}>
+            <Text style={styles.receiptItem}>Transaction ID: {receiptData.transactionId}</Text>
+            <Text style={styles.receiptItem}>Student ID: {receiptData.studentId}</Text>
+            <Text style={styles.receiptItem}>Payment Method: {receiptData.paymentMethod}</Text>
+            <Text style={styles.receiptItem}>Amount Paid: KES {receiptData.amountPaid}</Text>
+            <Text style={styles.receiptItem}>Date: {receiptData.date}</Text>
+            <Text style={styles.receiptItem}>Notes: {receiptData.cashierNotes}</Text>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -70,6 +69,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f4f4f4',
     padding: 20,
+  },
+    safeArea: {
+    flex: 1,
+    backgroundColor: '#f4f4f4',
   },
   header: {
     fontSize: 22,

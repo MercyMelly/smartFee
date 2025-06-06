@@ -1,14 +1,18 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 require('../models/user'); 
 const mongoose = require('mongoose');
 const router = express.Router();
 const User = mongoose.model('userInfo');
+const { sendOTP, verifyOTP } = require('../controllers/authController');
+
+
+router.post('/send-otp', sendOTP);
+router.post('/verify-otp', verifyOTP);
 
 router.post('/signup', async (req, res) => {
   const { fullName, email, password, role, phoneNumber} = req.body;
-
-  const oldUser = await User.findOne({email:email});
+  const lowerEmail = email.toLowerCase();
+  const oldUser = await User.findOne({email:lowerEmail});
   if (oldUser) {
     return res.send({ data: 'User already exists' });
   }
@@ -16,7 +20,7 @@ router.post('/signup', async (req, res) => {
   try {
     await User.create({
       fullName,
-      email:email,
+      email:lowerEmail,
       password,
       role,
       phoneNumber
@@ -31,9 +35,10 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  const lowerEmail = email.toLowerCase();
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email : lowerEmail });
     if (!user) return res.status(400).json({ message: 'User not found' });
 
     if (user.password !== password) {

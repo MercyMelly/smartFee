@@ -48,6 +48,8 @@ exports.addPayment = async (req, res) => {
 
     student.balance -= totalAmount;
     await student.save();
+    student.balance = Math.max(student.balance - totalAmount, 0);
+
 
     if (student.balance > 0 && student.parentPhone) {
       const smsMessage = `Hello ${student.parentName}, your child ${student.fullName} has an outstanding balance of KES ${student.balance}. Please clear it.`;
@@ -70,15 +72,6 @@ exports.addPayment = async (req, res) => {
   }
 };
 
-exports.getPaymentsByStudent = async (req, res) => {
-  try {
-    const payments = await Payment.find({ student: req.params.studentId });
-    res.json(payments);
-  } catch (error) {
-    console.error('Fetch error:', error);
-    res.status(500).json({ message: 'Something went wrong', error: error.message });
-  }
-};
 
 exports.getTodayPayments = async (req, res) => {
   try {
@@ -159,6 +152,44 @@ exports.getTotalOutstandingFees = async (req, res) => {
     res.json({ totalOutstanding: total });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching total outstanding fees', error: err.message });
+  }
+};
+
+exports.getPaymentByReferenceNumber = async (req, res) => {
+  try {
+    const payment = await Payment.findOne({ referenceNumber: req.params.referenceNumber })
+      .populate('student', 'studentId'); 
+
+    if (!payment) {
+      return res.status(404).json({ message: 'Receipt not found' });
+    }
+
+    res.json({
+      studentId: payment.student?.studentId || 'Unknown',
+      paymentMethod: payment.paymentMethod,
+      amountPaid: payment.amount,
+      date: payment.createdAt.toISOString().split('T')[0],
+      transactionId: payment.referenceNumber,
+      cashierNotes: 'Paid successfully'
+    });
+  } catch (error) {
+    console.error('Error fetching receipt:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.getPaymentsByStudent = async (req, res) => {
+  const { admissionNumber } = req.params;
+
+  try {
+    const student = await Student.findOne({ admissionNumber });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const payments = await Payment.find({ admissionNumber }).sort({ date: -1 });
+
+    res.json({ student, payments });
+  } catch (err) {
+    console.error('Error fetching student payments:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

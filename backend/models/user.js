@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const UserDetailSchema = new mongoose.Schema({
   fullName: {
     type: String,
@@ -9,6 +10,7 @@ const UserDetailSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    lowercase: true,
     match: /.+\@.+\..+/,
   },
   password: {
@@ -18,8 +20,9 @@ const UserDetailSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'bursar','Admin', 'Bursar'],
+    enum: ['admin','bursar'],
     required: true,
+    lowercase: true,
   },
   phoneNumber: {
     type: String,
@@ -30,7 +33,5 @@ const UserDetailSchema = new mongoose.Schema({
 {collection: 'userInfo'}
 
 );
-
-
 
 module.exports = mongoose.model('userInfo', UserDetailSchema);

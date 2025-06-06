@@ -9,6 +9,7 @@ router.get('/', studentsController.getAllStudents);
 router.get('/:admissionNumber', studentsController.getStudentByAdmission);
 router.get('/outstandingByClass', paymentsController.getOutstandingFeesByClass);
 router.get('/totalOutstanding',paymentsController.getTotalOutstandingFees);
+router.get('/byStudent/:admissionNumber', paymentsController.getPaymentsByStudent);
 
 
 module.exports = router;
