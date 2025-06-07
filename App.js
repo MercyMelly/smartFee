@@ -18,6 +18,8 @@ import StudentProfile from './bursarScreens/studentProfile';
 import StudentList from './bursarScreens/studentsList';
 import ForgotPassword from './screens/forgotPassword';
 import ResetPassword from './screens/resetPassword';
+import SettingsScreen from './screens/settings';
+// import LogoutScreen from './screens/logout';
 
 const Stack = createStackNavigator();
 export default function App() {
@@ -41,9 +43,8 @@ export default function App() {
         <Stack.Screen name="studentsList" component={StudentList} />
         <Stack.Screen name="forgotPassword" component={ForgotPassword} />
         <Stack.Screen name="resetPassword" component={ResetPassword} />
-
-
-
+        <Stack.Screen name="settings" component={SettingsScreen} />
+        {/* <Stack.Screen name="logout" component={LogoutScreen} /> */}
         
       </Stack.Navigator>
     </NavigationContainer>

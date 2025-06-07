@@ -1,12 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import axios from 'axios';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 const AdminDashboard = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+    const navigation = useNavigation();
+  const getGreeting = () => {
+    const hour = new Date().getHours();   
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+  const handleLogout = () => {
+    Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          navigation.replace('login');
+        },
+      },
+    ]);
+  };;
+
 
   const fetchSummary = async () => {
     try {
@@ -24,10 +47,18 @@ const AdminDashboard = () => {
   }, []);
 
   return (
+  <SafeAreaView style={{ flex: 1 }}>
+    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <Icon name="logout" size={24} color="#2e7d32" />
+    </TouchableOpacity>
+
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Dashboard</Text>
         <Text style={styles.sectionTitle}>Welcome Admin</Text>
+        <Text style={styles.sectionTitle}>{getGreeting()}, {new Date().toLocaleDateString()}</Text>
+             {/* <Text style={styles.title}>{getGreeting()}, Bursar</Text>
+                <Text style={styles.subTitle}>{new Date().toDateString()}</Text> */}
       </View>
 
       {loading ? (
@@ -57,6 +88,7 @@ const AdminDashboard = () => {
         </View>
       )}
     </ScrollView>
+  </SafeAreaView>
   );
 };
 
@@ -101,6 +133,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  logoutButton: {
+    position: 'absolute',
+    top: 10,
+    right: 15,
+    zIndex: 10,
+    padding: 8,
+  },  
 });
 
 export default AdminDashboard;

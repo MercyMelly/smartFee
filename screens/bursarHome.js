@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,9 +14,22 @@ const BursarDashboard = () => {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+  
+  const handleLogout = () => {
+    Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          navigation.replace('login');
+        },
+      },
+    ]);
+  };
 
   useEffect(() => {
-    // Later, fetch from backend
     setStats({ collected: 254000, expected: 400000, outstanding: 146000 });
   }, []);
 
@@ -37,18 +50,15 @@ const BursarDashboard = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+  
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Icon name="logout" size={24} color="#2e7d32" />
+      </TouchableOpacity>
         <Text style={styles.title}>{getGreeting()}, Bursar</Text>
         <Text style={styles.subTitle}>{new Date().toDateString()}</Text>
 
-        <Text style={styles.sectionHeader}>📊 Financial Summary</Text>
-        <View style={styles.statsRow}>
-          <StatCard icon="cash" title="Collected" value={stats.collected} color="#4caf50" />
-          <StatCard icon="chart-line" title="Expected" value={stats.expected} color="#2196f3" />
-        </View>
-        <StatCard icon="alert-circle" title="Outstanding" value={stats.outstanding} color="#f44336" />
-
-        <Text style={styles.sectionHeader}>🎯 Quick Actions</Text>
+        <Text style={styles.sectionHeader}>Quick Actions</Text>
         <View style={styles.quickActions}>
           <ActionButton icon="account-plus" label="Add Student" onPress={() => navigation.navigate('addStudent')} />
           <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
@@ -103,7 +113,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 15,
     marginTop: 20,
     marginBottom: 10,
-    color: '#333',
+    // color: '#333',
+    color: '#2e7d32',
+    textAlign: 'center',
   },
   statsRow: {
     flexDirection: 'row',
@@ -148,6 +160,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+  logoutButton: {
+    position: 'absolute',
+    top: 10,
+    right: 15,
+    zIndex: 10,
+    padding: 8,
+  },  
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -159,6 +178,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
   },
+
 });
 
 export default BursarDashboard;
