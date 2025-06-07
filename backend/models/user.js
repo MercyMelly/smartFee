@@ -24,11 +24,8 @@ const UserDetailSchema = new mongoose.Schema({
     required: true,
     lowercase: true,
   },
-  phoneNumber: {
-    type: String,
-    required: true,
-    match: /^\+?[0-9]{10,15}$/,
-  },
+  otp: String,
+  otpExpires: Date,
 } ,
 {collection: 'userInfo'}
 

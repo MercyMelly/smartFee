@@ -16,6 +16,8 @@ import PaymentHistory from './bursarScreens/paymentHistory';
 import NewStudent from './bursarScreens/addStudent';
 import StudentProfile from './bursarScreens/studentProfile';
 import StudentList from './bursarScreens/studentsList';
+import ForgotPassword from './screens/forgotPassword';
+import ResetPassword from './screens/resetPassword';
 
 const Stack = createStackNavigator();
 export default function App() {
@@ -37,6 +39,10 @@ export default function App() {
         <Stack.Screen name="addStudent" component={NewStudent} />
         <Stack.Screen name="studentProfile" component={StudentProfile} />
         <Stack.Screen name="studentsList" component={StudentList} />
+        <Stack.Screen name="forgotPassword" component={ForgotPassword} />
+        <Stack.Screen name="resetPassword" component={ResetPassword} />
+
+
 
         
       </Stack.Navigator>

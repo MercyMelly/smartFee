@@ -5,7 +5,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const UserDetailSchema = Yup.object().shape({
+const UserDetailSchema = Yup.object().shape({ 
   email: Yup.string()
     .email('Enter a valid email')
     .required('Email is required'),
@@ -17,36 +17,69 @@ const UserDetailSchema = Yup.object().shape({
 export default function Login({ navigation }) {
   const [secureText, setSecureText] = useState(true);
 
-  const handleLogin = async (values, { setSubmitting }) => {
-    try {
-      const res = await axios.post('http://192.168.0.27:3000/api/login', values); 
-      const { token, role } = res.data;
-        console.log('Login API response:', res.data);  
-      await AsyncStorage.setItem('token', token);
-      switch (role) {
-        case 'admin':
-          navigation.replace('adminHome');
-          break;
-        case 'bursar':
-          navigation.replace('bursarHome');
-          break;
-        default:
-          Alert.alert('Login Error', 'Unrecognized role. Please contact support.');
-      }
-    } catch (err) {
-      console.log('Login error:', err.response?.data || err.message);
+  // const handleLogin = async (values, { setSubmitting }) => {
+  //   try {
+  //     const res = await axios.post('http://192.168.0.27:3000/api/login', values); 
+  //     const { token, role } = res.data;
+  //       console.log('Login API response:', res.data);  
+  //     await AsyncStorage.setItem('token', token);
+  //     switch (role) {
+  //       case 'admin':
+  //         navigation.replace('adminHome');
+  //         break;
+  //       case 'bursar':
+  //         navigation.replace('bursarHome');
+  //         break;
+  //       default:
+  //         Alert.alert('Login Error', 'Unrecognized role. Please contact support.');
+  //     }
+  //   } catch (err) {
+  //     console.log('Login error:', err.response?.data || err.message);
 
-      Alert.alert('Login Failed', err.response?.data?.message || 'Invalid email or password');
-    } finally {
-      setSubmitting(false);
+  //     Alert.alert('Login Failed', err.response?.data?.message || 'Invalid email or password');
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
+
+  const handleLogin = async (values, { setSubmitting }) => {
+  try {
+    const res = await axios.post('http://192.168.0.27:3000/api/login', values); 
+    const { token, role } = res.data;
+
+    console.log('Login API response:', res.data);  
+
+    if (!token) {
+      console.log('Token missing in response:', res.data);
+      Alert.alert('Login Failed', 'Login succeeded but no token was returned.');
+      return;
     }
-  };
+
+    await AsyncStorage.setItem('token', token);
+
+    switch (role) {
+      case 'admin':
+        navigation.replace('adminHome');
+        break;
+      case 'bursar':
+        navigation.replace('bursarHome');
+        break;
+      default:
+        Alert.alert('Login Error', 'Unrecognized role. Please contact support.');
+    }
+  } catch (err) {
+    console.log('Login error:', err.response?.data || err.message);
+    Alert.alert('Login Failed', err.response?.data?.message || 'Invalid email or password');
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>FeeHarvest</Text>
       <Text style={styles.subtitle} adjustsFontSizeToFit >Your School Fee Management System</Text>
-r
       <Formik
         initialValues={{ email: '', password: '' }}
         validationSchema={UserDetailSchema}
@@ -63,7 +96,7 @@ r
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            {touched.email && errors.email && <Text style={styles.error}>{errors.email}</Text>}
+            {touched.email && errors.email && <Text style={styles.error} adjustsFontSizeToFit>{errors.email}</Text>}
 
             <TextInput
               style={styles.input}
@@ -73,7 +106,7 @@ r
               onBlur={handleBlur('password')}
               value={values.password}
             />
-            {touched.password && errors.password && <Text style={styles.error}>{errors.password}</Text>}
+            {touched.password && errors.password && <Text style={styles.error} adjustsFontSizeToFit>{errors.password}</Text>}
 
             <TouchableOpacity onPress={() => setSecureText(!secureText)}>
               <Text style={styles.toggleText} adjustsFontSizeToFit>
@@ -92,6 +125,9 @@ r
 
             <TouchableOpacity onPress={() => navigation.navigate('signup')}>
               <Text style={styles.linkText}>Don't have an account? Create one</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('forgotPassword')}>
+              <Text style={styles.linkText}adjustsFontSizeToFit>Forgot Password?</Text>
             </TouchableOpacity>
           </>
         )}
@@ -165,3 +201,5 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
 });
+
+
