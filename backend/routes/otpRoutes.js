@@ -25,19 +25,16 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   try {
-    // Check OTP validity
     const isValid = verifyOtp(email, otp);
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid or expired OTP' });
     }
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Create JWT
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -56,12 +53,10 @@ router.post('/reset-password', async (req, res) => {
   if (!token || !newPassword) return res.status(400).json({ message: 'Token and new password are required' });
 
   try {
-    // Verify JWT token
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(payload.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // TODO: hash password here later
     user.password = newPassword; 
     await user.save();
 
@@ -75,7 +70,4 @@ router.post('/reset-password', async (req, res) => {
 module.exports = router;
 
 
-  // const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-//   res.json({ message: 'OTP verified', token });
-// });
 
