@@ -25,11 +25,11 @@ const StudentProfile = () => {
 
   const fetchStudentProfile = async () => {
     try {
-      const studentRes = await fetch(`http://192.168.0.27:3000/api/students/${admissionNumber}`);
+      const studentRes = await fetch(`http://10.71.107.212:3000/api/students/${admissionNumber}`);
       const studentData = await studentRes.json();
       setStudent(studentData);
 
-      const paymentRes = await fetch(`http://192.168.0.27:3000/payments/student/${admissionNumber}`);
+      const paymentRes = await fetch(`http://10.71.107.212:3000/payments/student/${admissionNumber}`);
       const paymentData = await paymentRes.json();
       setPayments(paymentData);
     } catch (error) {

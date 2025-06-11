@@ -13,7 +13,7 @@ export default function LogoutScreen({ navigation }) {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          navigation.replace('login'); // Go back to login screen
+          navigation.replace('login');
         },
       },
     ]);

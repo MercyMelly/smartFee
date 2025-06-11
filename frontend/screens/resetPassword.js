@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAuthStore } from '../store/authStore';
 
-export default function ResetPassword({ route, navigation }) {
-  const { token } = route.params;
-
+export default function ResetPassword({ navigation }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(true);
   const [showConfirmPassword, setShowConfirmPassword] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const token = useAuthStore((state) => state.token);
 
   const handleReset = async () => {
     if (!newPassword || !confirmPassword) {
@@ -23,18 +32,28 @@ export default function ResetPassword({ route, navigation }) {
       return;
     }
 
+    if (!token) {
+      Alert.alert('Error', 'Authentication token not found. Please login again.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await axios.post('http://192.168.0.27:3000/api/reset-password', {
-        token,
-        newPassword,
-      });
+      const response = await axios.post(
+        'http://10.71.107.212:3000/api/reset-password',
+        { password: newPassword, confirmPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       Alert.alert('Success', 'Password reset successful. Please login.');
       navigation.replace('login');
-    } catch (err) {
-      console.log(err.response?.data || err.message);
-      Alert.alert('Error', err.response?.data?.message || 'Password reset failed');
+    } catch (error) {
+      console.log(error.response?.data || error.message);
+      Alert.alert('Error', error.response?.data?.message || 'Password reset failed');
     } finally {
       setLoading(false);
     }
@@ -53,7 +72,10 @@ export default function ResetPassword({ route, navigation }) {
           placeholder="Enter new password"
           secureTextEntry={showNewPassword}
         />
-        <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.iconContainer}>
+        <TouchableOpacity
+          onPress={() => setShowNewPassword(!showNewPassword)}
+          style={styles.iconContainer}
+        >
           <Icon name={showNewPassword ? 'eye-off' : 'eye'} size={24} color="#2e7d32" />
         </TouchableOpacity>
       </View>
@@ -67,13 +89,20 @@ export default function ResetPassword({ route, navigation }) {
           placeholder="Confirm password"
           secureTextEntry={showConfirmPassword}
         />
-        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.iconContainer}>
+        <TouchableOpacity
+          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+          style={styles.iconContainer}
+        >
           <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} size={24} color="#2e7d32" />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleReset} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Reset Password</Text>}
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Reset Password</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -81,10 +110,17 @@ export default function ResetPassword({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 20,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
   },
   title: {
-    fontSize: 24, fontWeight: 'bold', marginBottom: 20,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#2e7d32',
   },
   label: {
     alignSelf: 'flex-start',
@@ -99,7 +135,7 @@ const styles = StyleSheet.create({
     borderColor: '#2e7d32',
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginBottom: 15,
+    marginBottom: 20,
     width: '100%',
   },
   inputWithIcon: {
@@ -110,9 +146,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   button: {
-    backgroundColor: '#2e7d32', padding: 15, borderRadius: 8, width: '100%', alignItems: 'center',
+    backgroundColor: '#2e7d32',
+    padding: 15,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
   },
   buttonText: {
-    color: '#fff', fontSize: 16, fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

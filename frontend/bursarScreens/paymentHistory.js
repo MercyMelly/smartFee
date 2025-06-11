@@ -9,7 +9,7 @@ const PaymentHistory = () => {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const response = await fetch('http://192.168.0.27:3000/api/payments/all');
+        const response = await fetch('http://10.71.107.212:3000/api/payments/all');
         const data = await response.json();
         setPayments(data);
       } catch (error) {
@@ -21,7 +21,6 @@ const PaymentHistory = () => {
 
     fetchPayments();
   }, []);
-
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <Text style={styles.name}>Student ID: {item.studentId}</Text>

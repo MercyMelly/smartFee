@@ -19,7 +19,7 @@ const GenerateReceipt = () => {
     setReceiptData(null);
 
     try {
-      const response = await fetch(`http://192.168.0.27:3000/api/payments/receipt/${transactionId}`);
+      const response = await fetch(`http://10.71.107.212:3000/api/payments/receipt/${transactionId}`);
       if (!response.ok) {
         throw new Error('Receipt not found');
       }

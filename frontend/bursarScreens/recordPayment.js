@@ -36,7 +36,7 @@ const RecordPayment = () => {
     };
 
     try {
-      const response = await fetch('http://192.168.0.27:3000/api/payments/record', {
+      const response = await fetch('http://10.71.107.212:3000/api/payments/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

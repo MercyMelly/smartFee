@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator,TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-const AdminDashboard = () => {
+const AdminHome = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
     const navigation = useNavigation();
@@ -142,4 +142,4 @@ const styles = StyleSheet.create({
   },  
 });
 
-export default AdminDashboard;
+export default AdminHome;

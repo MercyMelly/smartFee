@@ -37,9 +37,6 @@ const NewStudent = ({ navigation }) => {
         navigation.navigate('studentProfile', { student: newStudent }),
     },
   ]);
-
-    // Alert.alert('Success', 'Student registered successfully');
-    // navigation.goBack(); 
   };
 
   return (
@@ -123,7 +120,7 @@ const NewStudent = ({ navigation }) => {
             onPress={() => setBoarding(!boarding)}
             >
             <View style={[styles.checkboxBox, boarding && styles.checkedBox]} />
-            <Text style={styles.checkboxLabel}>Boarding</Text>
+            <Text style={styles.checkboxLabel}adjustsFontSizeToFit>Boarding</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -131,7 +128,7 @@ const NewStudent = ({ navigation }) => {
             onPress={() => setTransport(!transport)}
             >
             <View style={[styles.checkboxBox, transport && styles.checkedBox]} />
-            <Text style={styles.checkboxLabel}>Transport</Text>
+            <Text style={styles.checkboxLabel}adjustsFontSizeToFit>Transport</Text>
             </TouchableOpacity>
         </View>
 

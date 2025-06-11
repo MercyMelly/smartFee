@@ -3,11 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'rea
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useAuthStore } from '../store/authStore'; 
 const BursarDashboard = () => {
   const navigation = useNavigation();
   const [stats, setStats] = useState({ collected: 0, expected: 0, outstanding: 0 });
-
+  const logout = useAuthStore((state) => state.logout);
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';

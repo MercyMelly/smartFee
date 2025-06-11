@@ -48,7 +48,7 @@ const MakePayment = ({ route, navigation }) => {
     };
 
     try {
-      const response = await fetch('http://192.168.0.27:3000/api/payments', {
+      const response = await fetch('http://10.71.107.212:3000/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
