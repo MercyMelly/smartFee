@@ -26,6 +26,10 @@ import PaymentHistory from './bursarScreens/paymentHistory';
 import NewStudent from './bursarScreens/addStudent';
 import StudentProfile from './bursarScreens/studentProfile';
 import SettingsScreen from './screens/settings';
+import FeeStructure from './bursarScreens/feeStructureScreen';
+import StudentFeesLookupScreen from './bursarScreens/feesLook'; 
+
+
 
 const Stack = createStackNavigator();
 
@@ -63,7 +67,7 @@ export default function App() {
         ) : role === 'admin' ? (
           <>
             <Stack.Screen name="adminHome" component={AdminHome} />
-            {/* Add more admin screens here if needed */}
+
           </>
         ) : (
           <>
@@ -78,6 +82,8 @@ export default function App() {
             <Stack.Screen name="addStudent" component={NewStudent} />
             <Stack.Screen name="studentProfile" component={StudentProfile} />
             <Stack.Screen name="settings" component={SettingsScreen} />
+            <Stack.Screen name="feeStructureScreen" component={FeeStructure} />
+            <Stack.Screen name="feesLook" component={StudentFeesLookupScreen} />
           </>
         )}
       </Stack.Navigator>

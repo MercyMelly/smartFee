@@ -33,6 +33,8 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+
+
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   const lowerEmail = email.toLowerCase();
@@ -45,7 +47,12 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Optional: remove sensitive data like password
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     const safeUser = {
       _id: user._id,
       fullName: user.fullName,
@@ -54,45 +61,20 @@ router.post('/login', async (req, res) => {
       phoneNumber: user.phoneNumber,
     };
 
-    res.json({ status: 'ok', role: user.role.toLowerCase(), user: safeUser });
+    res.json({
+      status: 'ok',
+      token, 
+      role: user.role.toLowerCase(),
+      user: safeUser,
+    });
+
+    console.log("token", token);
+
+    console.log(`User ${user.fullName} logged in successfully.`);
 
   } catch (err) {
     res.status(500).json({ message: 'Login error', error: err.message });
   }
 });
-
-
-// router.post('/login', async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(400).json({ message: 'Invalid credentials' });
-//     }
-//     if (user.password !== password) {
-//       return res.status(400).json({ message: 'Invalid credentials' });
-//     }
-
-//     // const isMatch = await bcrypt.compare(password, user.password);
-//     // if (!isMatch) {
-//     //   return res.status(400).json({ message: 'Invalid credentials' });
-//     // }
-
-//     const token = jwt.sign(
-//       { userId: user._id, role: user.role },JWT_SECRET,
-//       { expiresIn: '7d' }
-//     );
-
-//     res.json({ status: 'ok', token, role: user.role });
-
-//   } catch (err) {
-//     console.error('Login error:', err);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// });
-
-module.exports = router;
-
 
 module.exports = router;

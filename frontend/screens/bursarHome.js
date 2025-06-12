@@ -68,10 +68,10 @@ const BursarDashboard = () => {
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+        <TouchableOpacity onPress={() => navigation.navigate('feeStructureScreen')}>
           <Icon name="view-dashboard" size={28} color="#2e7d32" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('studentsList')}>
+        <TouchableOpacity onPress={() => navigation.navigate('feesLook')}>
           <Icon name="account-group" size={28} color="#777" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('payments')}>

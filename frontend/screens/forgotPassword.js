@@ -16,7 +16,7 @@ export default function ForgotPassword({ navigation }) {
     if (!email) return Alert.alert('Error', 'Please enter an email');
     setLoading(true);
     try {
-      const res = await axios.post('http://10.71.107.212:3000/api/send-otp', { email });
+      const res = await axios.post('http://10.71.113.17:3000/api/send-otp', { email });
       Alert.alert('OTP Sent', 'Please check your email for the OTP');
       setStep(2);
     } catch (err) {
@@ -31,7 +31,7 @@ export default function ForgotPassword({ navigation }) {
     if (!otp) return Alert.alert('Error', 'Please enter the OTP');
     setLoading(true);
     try {
-      const res = await axios.post('http://10.71.107.212:3000/api/verify-otp', { email, otp });
+      const res = await axios.post('http://10.71.113.17:3000/api/verify-otp', { email, otp });
       const { token } = res.data;
       await AsyncStorage.setItem('token', token);
       Alert.alert('Login Successful');

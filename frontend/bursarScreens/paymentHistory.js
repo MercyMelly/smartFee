@@ -9,7 +9,7 @@ const PaymentHistory = () => {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const response = await fetch('http://10.71.107.212:3000/api/payments/all');
+        const response = await fetch('http://10.71.113.17:3000/api/payments/all');
         const data = await response.json();
         setPayments(data);
       } catch (error) {

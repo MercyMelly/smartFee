@@ -23,7 +23,7 @@ export default function Login({ navigation }) {
   const handleLogin = async (values, { setSubmitting }) => {
     
     try {
-      const res = await axios.post('http://10.71.107.212:3000/api/login', values);
+      const res = await axios.post('http://10.71.113.17:3000/api/login', values);
       const { token, role,user } = res.data;
 
       if (!token) {

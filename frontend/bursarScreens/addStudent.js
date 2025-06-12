@@ -1,230 +1,406 @@
-import React, { useState } from 'react';
-import {  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
+const BASE_URL = 'http://10.71.113.17:3000/api'; // Your backend API base URL
 
-const classes = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
-
-const NewStudent = ({ navigation }) => {
-  const [name, setName] = useState('');
+export default function AddStudent({ navigation }) {
+  // Student State
+  const [fullName, setFullName] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
-  const [gender, setGender] = useState('');
-  const [boarding, setBoarding] = useState(false);
-  const [transport, setTransport] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [gradeLevel, setGradeLevel] = useState('');
+  const [boardingStatus, setBoardingStatus] = useState('');
+  const [hasTransport, setHasTransport] = useState(false);
+  const [transportRoute, setTransportRoute] = useState('');
 
-  const handleSubmit = () => {
-    if (!name || !admissionNumber || !selectedClass || !gender) {
-      Alert.alert('Error', 'Please fill all required fields');
+  // Parent State
+  const [parentName, setParentName] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentAddress, setParentAddress] = useState('');
+
+  const [loading, setLoading] = useState(false);
+
+  const ALL_VALID_GRADES = [
+    "", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
+    "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9",
+    "Grade 10", "Grade 11", "Grade 12"
+  ];
+  const ALL_VALID_ROUTES = [
+    "", "Senetwo", "Maraba", "Songhor", "Kamelilo",
+  ];
+
+  useEffect(() => {
+    if (!gradeLevel && ALL_VALID_GRADES.length > 1) {
+      setGradeLevel(ALL_VALID_GRADES[1]);
+    }
+    if (!boardingStatus) {
+      setBoardingStatus('Day');
+    }
+  }, []);
+
+  const handleAddStudent = async () => {
+    if (!fullName || !admissionNumber || !gradeLevel || !boardingStatus || !parentName || !parentPhone) {
+      Alert.alert('Missing Information', 'Please fill in all *required* fields for student and parent (marked with *).');
       return;
     }
-    const newStudent = {
-      name,
-      admissionNumber,
-      class: selectedClass,
-      gender,
-      boarding,
-      transport,
-      phoneNumber,
-    };
 
-    console.log('New student data:', newStudent);
-    Alert.alert('Success', 'Student registered successfully', [
-    {
-      text: 'OK',
-      onPress: () =>
-        navigation.navigate('studentProfile', { student: newStudent }),
-    },
-  ]);
+    setLoading(true);
+    try {
+      const studentData = {
+        fullName,
+        admissionNumber,
+        gradeLevel,
+        boardingStatus,
+        hasTransport: boardingStatus === 'Day' ? hasTransport : false,
+        transportRoute: (boardingStatus === 'Day' && hasTransport) ? transportRoute : '',
+        parentName,
+        parentPhone,
+        parentEmail,
+        parentAddress,
+      };
+
+      const response = await axios.post(`${BASE_URL}/students/register`, studentData);
+
+      Alert.alert('Success', `Student ${response.data.student.fullName} added successfully!`);
+      // Reset form fields
+      setFullName('');
+      setAdmissionNumber('');
+      setGradeLevel(ALL_VALID_GRADES[1]);
+      setBoardingStatus('Day');
+      setHasTransport(false);
+      setTransportRoute('');
+      setParentName('');
+      setParentPhone('');
+      setParentEmail('');
+      setParentAddress('');
+
+    } catch (error) {
+      console.error('Error adding student:', error.response?.data || error.message);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to add student. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <LinearGradient colors={['#F0F8F6', '#E8F5E9']} style={styles.gradient}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+            <Text style={styles.title}>Enroll New Student</Text>
 
-        <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Register New Student</Text>
-        <Text style={styles.label}>Full Name *</Text>
-        <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Enter full name"
-        />
-
-        <Text style={styles.label}>Admission Number *</Text>
-        <TextInput
-            style={styles.input}
-            value={admissionNumber}
-            onChangeText={setAdmissionNumber}
-            placeholder="Enter admission number"
-            keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Class *</Text>
-        <View style={styles.classSelector}>
-            {classes.map((cls) => (
-            <TouchableOpacity
-                key={cls}
-                style={[
-                styles.classButton,
-                selectedClass === cls && styles.selectedClassButton,
-                ]}
-                onPress={() => setSelectedClass(cls)}
-            >
-                <Text
-                style={[
-                    styles.classButtonText,
-                    selectedClass === cls && styles.selectedClassButtonText,
-                ]}
-                >
-                {cls}
-                </Text>
-            </TouchableOpacity>
-            ))}
-        </View>
-
-        <Text style={styles.label}>Gender *</Text>
-        <View style={styles.classSelector}>
-            {['Male', 'Female'].map((g) => (
-            <TouchableOpacity
-                key={g}
-                style={[
-                styles.classButton,
-                gender === g && styles.selectedClassButton,
-                ]}
-                onPress={() => setGender(g)}
-            >
-                <Text
-                style={[
-                    styles.classButtonText,
-                    gender === g && styles.selectedClassButtonText,
-                ]}
-                >
-                {g}
-                </Text>
-            </TouchableOpacity>
-            ))}
-        </View>
-            <Text style={styles.label}>Parent's Phone Number *</Text>
-            <TextInput
+            {/* Student Information Section */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>
+                <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Details
+              </Text>
+              <TextInput
                 style={styles.input}
-                onChangeText={setPhoneNumber}
-                placeholder="0712345678"
+                placeholder="Full Name *"
+                placeholderTextColor="#757575"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Admission Number *"
+                placeholderTextColor="#757575"
+                value={admissionNumber}
+                onChangeText={setAdmissionNumber}
                 keyboardType="numeric"
-            />
+              />
 
-        <View style={styles.checkboxContainer}>
+              <Text style={styles.label}>Grade Level: *</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={gradeLevel}
+                  style={styles.picker}
+                  onValueChange={(itemValue) => setGradeLevel(itemValue)}
+                >
+                  <Picker.Item label="Select Grade" value="" enabled={false} style={{ color: '#757575' }} />
+                  {ALL_VALID_GRADES.slice(1).map((grade) => (
+                    <Picker.Item key={grade} label={grade} value={grade} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Boarding Status: *</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={boardingStatus}
+                  style={styles.picker}
+                  onValueChange={(itemValue) => {
+                    setBoardingStatus(itemValue);
+                    if (itemValue === 'Boarding' || itemValue === '') {
+                      setHasTransport(false);
+                      setTransportRoute('');
+                    }
+                  }}
+                >
+                  <Picker.Item label="Select Status" value="" enabled={false} style={{ color: '#757575' }} />
+                  <Picker.Item label="Day" value="Day" />
+                  <Picker.Item label="Boarding" value="Boarding" />
+                </Picker>
+              </View>
+
+              {boardingStatus === 'Day' && (
+                <>
+                  <Text style={styles.label}>Uses School Transport?</Text>
+                  <View style={styles.pickerWrapper}>
+                    <Picker
+                      selectedValue={hasTransport}
+                      style={styles.picker}
+                      onValueChange={(itemValue) => {
+                        setHasTransport(itemValue);
+                        if (!itemValue) {
+                          setTransportRoute('');
+                        }
+                      }}
+                    >
+                      <Picker.Item label="No" value={false} />
+                      <Picker.Item label="Yes" value={true} />
+                    </Picker>
+                  </View>
+
+                  {hasTransport && (
+                    <>
+                      <Text style={styles.label}>Transport Route:</Text>
+                      <View style={styles.pickerWrapper}>
+                        <Picker
+                          selectedValue={transportRoute}
+                          style={styles.picker}
+                          onValueChange={(itemValue) => setTransportRoute(itemValue)}
+                        >
+                          <Picker.Item label="Select Route" value="" enabled={false} style={{ color: '#757575' }} />
+                          {ALL_VALID_ROUTES.slice(1).map((route) => (
+                            <Picker.Item key={route} label={route} value={route} />
+                          ))}
+                        </Picker>
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+
+            {/* Parent Information Section */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>
+                <Ionicons name="people-outline" size={24} color="#388E3C" /> Parent/Guardian Details
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Parent/Guardian Full Name *"
+                placeholderTextColor="#757575"
+                value={parentName}
+                onChangeText={setParentName}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Parent/Guardian Phone *"
+                placeholderTextColor="#757575"
+                value={parentPhone}
+                onChangeText={setParentPhone}
+                keyboardType="phone-pad"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Parent/Guardian Email (Optional)"
+                placeholderTextColor="#757575"
+                value={parentEmail}
+                onChangeText={setParentEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Parent/Guardian Address (Optional)"
+                placeholderTextColor="#757575"
+                value={parentAddress}
+                onChangeText={setParentAddress}
+                multiline
+              />
+            </View>
+
             <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setBoarding(!boarding)}
+              style={styles.button}
+              onPress={handleAddStudent}
+              disabled={loading}
             >
-            <View style={[styles.checkboxBox, boarding && styles.checkedBox]} />
-            <Text style={styles.checkboxLabel}adjustsFontSizeToFit>Boarding</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Register Student</Text>
+              )}
             </TouchableOpacity>
-
-            <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setTransport(!transport)}
-            >
-            <View style={[styles.checkboxBox, transport && styles.checkedBox]} />
-            <Text style={styles.checkboxLabel}adjustsFontSizeToFit>Transport</Text>
-            </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Register Student</Text>
-        </TouchableOpacity>
-        </ScrollView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
-};
+}
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   container: {
-    padding: 20,
-    backgroundColor: '#f8f9fa',
     flexGrow: 1,
+    padding: 20,
+    alignItems: 'center',
+    paddingBottom: 40,
   },
   title: {
-  fontSize: 24,
-  fontWeight: 'bold',
-  textAlign: 'center',
-  marginVertical: 20,
-  color: '#2e7d32',
-},
-  label: {
+    fontSize: 30,
     fontWeight: 'bold',
-    marginBottom: 6,
-    fontSize: 16,
-    color: '#333',
+    color: '#1B5E20', // Primary Green
+    marginBottom: 30,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
-  input: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
+  sectionCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF', // Neutral
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 25,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#C8E6C9', // Secondary Green for border
   },
-  classSelector: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-  },
-  classButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    marginRight: 10,
-    marginBottom: 10,
-  },
-  selectedClassButton: {
-    backgroundColor: '#2e7d32',
-  },
-  classButtonText: {
-    color: '#333',
+  sectionTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-  },
-  selectedClassButtonText: {
-    color: '#fff',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 40,
-  },
-  checkbox: {
+    color: '#388E3C', 
+    marginBottom: 20,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8F5E9',
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  checkboxBox: {
-    width: 20,
-    height: 20,
+  input: {
+    width: '100%',
+    padding: 15,
     borderWidth: 1,
-    borderColor: '#444',
-    marginRight: 8,
-    borderRadius: 3,
-  },
-  checkedBox: {
-    backgroundColor: '#2e7d32',
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  submitButton: {
-    backgroundColor: '#2e7d32',
-    paddingVertical: 15,
+    borderColor: '#A5D6A7', 
     borderRadius: 10,
+    marginBottom: 15,
+    fontSize: 16,
+    backgroundColor: '#F8F8F8', 
+    color: '#333',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  submitButtonText: {
-    color: '#fff',
-    textAlign: 'center',
+  textArea: {
+    height: 100, 
+    textAlignVertical: 'top',
+  },
+  label: {
+    alignSelf: 'flex-start',
+    marginLeft: 5,
+    marginTop: 5,
+    marginBottom: 8,
+    fontSize: 16,
+    color: '#555', // Neutral dark grey
+    fontWeight: '600',
+  },
+  pickerWrapper: {
+    width: '100%',
+    borderColor: '#A5D6A7', // Secondary Green
+    borderWidth: 1,
+    borderRadius: 10,
+    backgroundColor: '#F8F8F8', // Neutral
+    marginBottom: 15,
+    overflow: 'hidden',
+    height: 55,
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  picker: {
+    width: '100%',
+    height: 55,
+    color: '#333', // Neutral dark grey
+  },
+  button: {
+    backgroundColor: '#4CAF50', // Secondary Green for the button
+    padding: 18,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  buttonText: {
+    color: '#fff', // White text on button
+    fontSize: 20,
     fontWeight: 'bold',
-    fontSize: 18,
+    letterSpacing: 0.5,
   },
 });
-
-export default NewStudent;
