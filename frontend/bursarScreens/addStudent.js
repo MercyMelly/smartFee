@@ -24,6 +24,7 @@ export default function AddStudent({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
+  const [gender, setGender] = useState(''); // <--- ADDED THIS LINE
   const [boardingStatus, setBoardingStatus] = useState('');
   const [hasTransport, setHasTransport] = useState(false);
   const [transportRoute, setTransportRoute] = useState('');
@@ -52,10 +53,15 @@ export default function AddStudent({ navigation }) {
     if (!boardingStatus) {
       setBoardingStatus('Day');
     }
+    // Initialize gender if it's not set
+    if (!gender) {
+        setGender(''); // Default to empty string for "Select Gender" option
+    }
   }, []);
 
   const handleAddStudent = async () => {
-    if (!fullName || !admissionNumber || !gradeLevel || !boardingStatus || !parentName || !parentPhone) {
+    // Ensure gender is included in the validation check for required fields
+    if (!fullName || !admissionNumber || !gradeLevel || !gender || !boardingStatus || !parentName || !parentPhone) {
       Alert.alert('Missing Information', 'Please fill in all *required* fields for student and parent (marked with *).');
       return;
     }
@@ -66,6 +72,7 @@ export default function AddStudent({ navigation }) {
         fullName,
         admissionNumber,
         gradeLevel,
+        gender, // Now `gender` is properly defined
         boardingStatus,
         hasTransport: boardingStatus === 'Day' ? hasTransport : false,
         transportRoute: (boardingStatus === 'Day' && hasTransport) ? transportRoute : '',
@@ -78,10 +85,11 @@ export default function AddStudent({ navigation }) {
       const response = await axios.post(`${BASE_URL}/students/register`, studentData);
 
       Alert.alert('Success', `Student ${response.data.student.fullName} added successfully!`);
-      // Reset form fields
+      // Reset form fields, including gender
       setFullName('');
       setAdmissionNumber('');
       setGradeLevel(ALL_VALID_GRADES[1]);
+      setGender(''); // Reset gender state
       setBoardingStatus('Day');
       setHasTransport(false);
       setTransportRoute('');
@@ -140,6 +148,19 @@ export default function AddStudent({ navigation }) {
                   {ALL_VALID_GRADES.slice(1).map((grade) => (
                     <Picker.Item key={grade} label={grade} value={grade} />
                   ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Gender: *</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={gender}
+                  style={styles.picker}
+                  onValueChange={(itemValue) => setGender(itemValue)}
+                >
+                  <Picker.Item label="Select Gender" value="" enabled={false} style={{ color: '#757575' }} />
+                  <Picker.Item label="Male" value="Male" />
+                  <Picker.Item label="Female" value="Female" />
                 </Picker>
               </View>
 
@@ -306,7 +327,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#388E3C', 
+    color: '#388E3C',
     marginBottom: 20,
     textAlign: 'center',
     borderBottomWidth: 1,
@@ -320,11 +341,11 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 15,
     borderWidth: 1,
-    borderColor: '#A5D6A7', 
+    borderColor: '#A5D6A7',
     borderRadius: 10,
     marginBottom: 15,
     fontSize: 16,
-    backgroundColor: '#F8F8F8', 
+    backgroundColor: '#F8F8F8',
     color: '#333',
     ...Platform.select({
       ios: {
@@ -339,7 +360,7 @@ const styles = StyleSheet.create({
     }),
   },
   textArea: {
-    height: 100, 
+    height: 100,
     textAlignVertical: 'top',
   },
   label: {

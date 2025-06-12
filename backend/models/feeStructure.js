@@ -1,24 +1,38 @@
-
-
-
 const mongoose = require('mongoose');
 
 const feeStructureSchema = new mongoose.Schema({
   gradeLevel: { type: String, required: true },
-  boardingStatus: { type: String, required: true },
+  boardingStatus: { type: String, required: true, enum: ['Day', 'Boarding'] }, 
   hasTransport: { type: Boolean, required: true },
-  transportRoutes: Object, 
+  transportRoutes: {
+    type: Map,
+    of: Number, 
+    default: {} 
+  },
   termlyComponents: [{
-    name: String,
-    amount: Number
+    name: { type: String, required: true },
+    amount: { type: Number, required: true }
   }],
-  totalCalculated: Number
+  totalAmount: { 
+    type: Number,
+    required: true, 
+    default: 0
+  },
+
+  totalCalculated: {
+    type: Number,
+    required: true, 
+    default: 0
+  },
+  notes: { 
+    type: String,
+    trim: true
+  }
 }, {
-  // Optional: Add timestamps for created/updated dates
-  timestamps: true
+  timestamps: true 
 });
 
-// IMPORTANT CHANGE HERE:
-// Pass 'feeStructure' as the third argument to mongoose.model()
-// This forces Mongoose to use the exact collection name 'feeStructure'
+feeStructureSchema.index({ gradeLevel: 1, boardingStatus: 1, hasTransport: 1, transportRoute: 1 }, { unique: true });
+
+
 module.exports = mongoose.model('FeeStructure', feeStructureSchema, 'feeStructure');

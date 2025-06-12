@@ -102,6 +102,10 @@ const studentSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female'],
+  },
   boardingStatus: {
     type: String,
     enum: ['Day', 'Boarding'],

@@ -236,20 +236,20 @@ export default function FeeStructure() {
             {/* M-Pesa */}
             <View style={styles.paymentMethodCard}>
               <Text style={styles.paymentMethodTitle}>1. M-Pesa</Text>
-              <Text style={styles.paymentDetail}>**Paybill Number:** {MPESA_DETAILS.paybillNumber}</Text>
-              <Text style={styles.paymentDetail}>**Account Number Format:** {MPESA_DETAILS.accountNumberFormat}</Text>
+              <Text style={styles.paymentDetail}>Paybill Number: {MPESA_DETAILS.paybillNumber}</Text>
+              <Text style={styles.paymentDetail}>Account Number Format: {MPESA_DETAILS.accountNumberFormat}</Text>
               <Text style={styles.paymentNotes}>{MPESA_DETAILS.notes}</Text>
             </View>
 
             {/* Bank Transfer */}
             <View style={styles.paymentMethodCard}>
               <Text style={styles.paymentMethodTitle}>2. Bank Transfer</Text>
-              <Text style={styles.paymentDetail}>**Bank Name:** {SCHOOL_BANK_DETAILS.bankName}</Text>
-              <Text style={styles.paymentDetail}>**Account Name:** {SCHOOL_BANK_DETAILS.accountName}</Text>
-              <Text style={styles.paymentDetail}>**Account Number:** {SCHOOL_BANK_DETAILS.accountNumber}</Text>
-              <Text style={styles.paymentDetail}>**Branch:** {SCHOOL_BANK_DETAILS.branch}</Text>
+              <Text style={styles.paymentDetail}>Bank Name: {SCHOOL_BANK_DETAILS.bankName}</Text>
+              <Text style={styles.paymentDetail}>Account Name: {SCHOOL_BANK_DETAILS.accountName}</Text>
+              <Text style={styles.paymentDetail}>Account Number: {SCHOOL_BANK_DETAILS.accountNumber}</Text>
+              <Text style={styles.paymentDetail}>Branch: {SCHOOL_BANK_DETAILS.branch}</Text>
               {SCHOOL_BANK_DETAILS.swiftCode && (
-                <Text style={styles.paymentDetail}>**SWIFT Code:** {SCHOOL_BANK_DETAILS.swiftCode}</Text>
+                <Text style={styles.paymentDetail}>SWIFT Code: {SCHOOL_BANK_DETAILS.swiftCode}</Text>
               )}
               <Text style={styles.paymentNotes}>{SCHOOL_BANK_DETAILS.notes}</Text>
             </View>
@@ -260,10 +260,10 @@ export default function FeeStructure() {
               <Text style={styles.paymentDetail}>We accept payments in the form of:</Text>
               {IN_KIND_PAYMENT_DETAILS.acceptedItems.map((item, index) => (
                 <Text key={index} style={styles.inKindItem}>
-                  - {item.name} ({item.unit}) - *Est. KSh {item.valuePerUnit.toLocaleString()} per unit*
+                  - {item.name} ({item.unit}) - Est. KSh {item.valuePerUnit.toLocaleString()} per unit
                 </Text>
               ))}
-              <Text style={styles.paymentDetail}>**Process:**</Text>
+              <Text style={styles.paymentDetail}>Process:</Text>
               {IN_KIND_PAYMENT_DETAILS.process.map((step, index) => (
                 <Text key={index} style={styles.inKindProcessStep}>
                   {index + 1}. {step}

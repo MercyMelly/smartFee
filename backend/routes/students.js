@@ -23,7 +23,8 @@ const {
   getStudentByAdmission,
   getStudentFees,
   updateStudent,
-  deleteStudent
+  deleteStudent,
+  getStudentProfile
 } = require('../controllers/studentsController'); // Ensure this path is correct
 
 const router = express.Router();
@@ -34,5 +35,6 @@ router.get('/:admissionNumber', getStudentByAdmission); // To get a single stude
 router.get('/:admissionNumber/fees', getStudentFees); // To get a single student's calculated fees
 router.put('/:admissionNumber', updateStudent); // To update a student's details
 router.delete('/:admissionNumber', deleteStudent); // To delete a student
+router.get('/:admissionNumber/profile', getStudentProfile);
 
 module.exports = router;

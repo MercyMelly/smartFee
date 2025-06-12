@@ -27,7 +27,7 @@ import NewStudent from './bursarScreens/addStudent';
 import StudentProfile from './bursarScreens/studentProfile';
 import SettingsScreen from './screens/settings';
 import FeeStructure from './bursarScreens/feeStructureScreen';
-import StudentFeesLookupScreen from './bursarScreens/feesLook'; 
+import StudentProfileScreen from './bursarScreens/feesLook'; 
 
 
 
@@ -83,7 +83,7 @@ export default function App() {
             <Stack.Screen name="studentProfile" component={StudentProfile} />
             <Stack.Screen name="settings" component={SettingsScreen} />
             <Stack.Screen name="feeStructureScreen" component={FeeStructure} />
-            <Stack.Screen name="feesLook" component={StudentFeesLookupScreen} />
+            <Stack.Screen name="feesLook" component={StudentProfileScreen} />
           </>
         )}
       </Stack.Navigator>

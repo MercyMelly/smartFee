@@ -1,6 +1,6 @@
-// controllers/studentController.js
-const Student = require('../models/studentsDB'); // Make sure this path is correct
-const FeeStructure = require('../models/feeStructure'); // Make sure this path is correct
+const Student = require('../models/studentsDB');
+const FeeStructure = require('../models/feeStructure');
+const Payment = require('../models/paymentsDB');
 
 /**
  * @desc    Registers a new student.
@@ -12,17 +12,19 @@ exports.registerStudent = async (req, res) => {
   const {
     fullName,
     admissionNumber,
-    gradeLevel,     
-    boardingStatus, 
-    hasTransport,   
+    gradeLevel,
+    gender, // <--- Added gender here
+    boardingStatus,
+    hasTransport,
     transportRoute,
     parentName,
     parentPhone,
-    // totalFees and balance will be calculated/managed elsewhere, not directly set on registration
+    parentEmail, // <--- Added parentEmail
+    parentAddress, // <--- Added parentAddress
   } = req.body;
 
-  if (!fullName || !admissionNumber || !gradeLevel || !boardingStatus || !parentName || !parentPhone) {
-    return res.status(400).json({ message: 'Please provide all required student details: Full Name, Admission Number, Grade Level, Boarding Status, Parent Name, Parent Phone.' });
+  if (!fullName || !admissionNumber || !gradeLevel || !gender || !boardingStatus || !parentName || !parentPhone) {
+    return res.status(400).json({ message: 'Please provide all required student details: Full Name, Admission Number, Grade Level, Gender, Boarding Status, Parent Name, Parent Phone.' });
   }
 
   try {
@@ -38,11 +40,14 @@ exports.registerStudent = async (req, res) => {
       fullName,
       admissionNumber,
       gradeLevel,
+      gender, // <--- Pass gender to the model
       boardingStatus,
       hasTransport: studentHasTransport,
       transportRoute: studentTransportRoute,
       parentName,
       parentPhone,
+      parentEmail, // <--- Pass parentEmail
+      parentAddress, // <--- Pass parentAddress
     });
 
     const savedStudent = await newStudent.save();
@@ -50,6 +55,10 @@ exports.registerStudent = async (req, res) => {
 
   } catch (error) {
     console.error('Error registering student:', error.message);
+    // More specific error message for validation errors
+    if (error.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Validation failed', errors: error.errors });
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -103,106 +112,154 @@ exports.getStudentFees = async (req, res) => {
       return res.status(404).json({ message: 'Student not found.' });
     }
 
-    // Now, use the student's details to find their fee structure
-    const query = {
-      gradeLevel: student.gradeLevel,
-      boardingStatus: student.boardingStatus,
-      hasTransport: student.hasTransport, // This must match the structure
-    };
+    // --- FEE STRUCTURE QUERY LOGIC REFINEMENT ---
+    let feeRecord;
+    let fallbackAttempted = false; // Flag to track if we attempted a fallback
 
-    let feeRecord = await FeeStructure.findOne(query);
-
-    if (!feeRecord) {
-      // If no direct match, try a fallback for Day scholars without specific transport selected
-      // This is helpful if a student has hasTransport: true but no route, and the backend needs to provide base fee + available routes
-      if (student.boardingStatus === 'Day' && student.hasTransport && !student.transportRoute) {
-        // Try to find the base day scholar fee structure to provide available routes
-        feeRecord = await FeeStructure.findOne({
-            gradeLevel: student.gradeLevel,
-            boardingStatus: 'Day',
-            hasTransport: true, // Look for the general "day with transport" structure
-        });
-        if (feeRecord) {
-            // Found a base structure, can now provide available routes for selection
-            return res.status(200).json({
-                message: "Please select a transport route for this student to get the exact fee.",
-                studentDetails: {
-                    admissionNumber: student.admissionNumber,
-                    fullName: student.fullName,
-                    gradeLevel: student.gradeLevel,
-                    boardingStatus: student.boardingStatus,
-                    hasTransport: student.hasTransport,
-                    transportRoute: student.transportRoute,
-                },
-                termlyComponents: feeRecord.termlyComponents,
-                totalCalculated: feeRecord.totalCalculated, // This is the total WITHOUT transport yet
-                finalTotal: feeRecord.totalCalculated, // For consistency, show base total
-                availableRoutes: feeRecord.transportRoutes, // Provide the routes from the found structure
-                notes: `Student is a Day scholar needing transport. Select a route to finalize fee. Current total is without transport.`,
-            });
-        }
-      }
-      // If no fee structure found at all, or the specific transport route wasn't found
-      return res.status(404).json({
-        message: 'Fee structure not found for this student\'s criteria.',
-        studentDetails: {
-            admissionNumber: student.admissionNumber,
-            fullName: student.fullName,
-            gradeLevel: student.gradeLevel,
-            boardingStatus: student.boardingStatus,
-            hasTransport: student.hasTransport,
-            transportRoute: student.transportRoute,
-        },
-        queryUsed: query
+    if (student.boardingStatus === 'Day' && student.hasTransport && student.transportRoute) {
+      // Priority 1: Exact match for Day scholar with a specific transport route
+      feeRecord = await FeeStructure.findOne({
+        gradeLevel: student.gradeLevel,
+        boardingStatus: 'Day',
+        hasTransport: true,
+        transportRoute: student.transportRoute,
       });
     }
 
-    // If a fee record is found, calculate the final total including transport
-    let feeDetails = feeRecord.toObject();
-    let finalTotal = feeDetails.totalCalculated;
-    let components = [...feeDetails.termlyComponents];
-    let notes = '';
+    if (!feeRecord && student.boardingStatus === 'Day' && !student.hasTransport) {
+      // Priority 2: Day scholar without transport
+      feeRecord = await FeeStructure.findOne({
+        gradeLevel: student.gradeLevel,
+        boardingStatus: 'Day',
+        hasTransport: false,
+        transportRoute: '', // Or specifically null/undefined if that's how it's stored
+      });
+    }
 
-    // Add transport fee if applicable and a route is specified in the student record
-    if (student.hasTransport && student.boardingStatus === 'Day' && student.transportRoute) {
-      if (feeDetails.transportRoutes && feeDetails.transportRoutes[student.transportRoute]) {
-        const transportAmount = feeDetails.transportRoutes[student.transportRoute];
-        finalTotal += transportAmount;
-        components.push({ name: `Transport Fee (${student.transportRoute})`, amount: transportAmount });
-        notes = `Total includes transport for ${student.transportRoute} route.`;
-      } else {
-        // Specific route chosen by student, but not found in FeeStructure's routes
-        notes = `Transport route '${student.transportRoute}' not found in fee structure for this grade. Fee calculated without transport.`;
+    if (!feeRecord && student.boardingStatus === 'Boarding') {
+      // Priority 3: Boarding scholar
+      feeRecord = await FeeStructure.findOne({
+        gradeLevel: student.gradeLevel,
+        boardingStatus: 'Boarding',
+        hasTransport: false, // Boarders typically don't have separate transport fees tied to their fee structure
+        transportRoute: '',
+      });
+    }
+
+    // --- FALLBACK FOR DAY SCHOLARS NEEDING TRANSPORT, BUT NO SPECIFIC ROUTE FEE FOUND ---
+    // This handles cases where a student has hasTransport: true, but transportRoute is empty
+    // or the specific route isn't defined in FeeStructure as a separate document.
+    // It will return the *base* day scholar fee and prompt for route selection.
+    if (!feeRecord && student.boardingStatus === 'Day' && student.hasTransport && !student.transportRoute) {
+      fallbackAttempted = true;
+      feeRecord = await FeeStructure.findOne({
+        gradeLevel: student.gradeLevel,
+        boardingStatus: 'Day',
+        hasTransport: true, // Look for a general 'Day with Transport' structure
+        // Do NOT include transportRoute in this fallback query, as we're looking for the base
+        // Or query for transportRoute: '' if you use that for the base Day transport fee
+      });
+    }
+
+    // --- Handle if NO fee structure is found after all attempts ---
+    if (!feeRecord) {
+      let errorMessage = 'Fee structure not found for this student\'s criteria.';
+      if (fallbackAttempted) {
+        errorMessage = 'Base fee structure for Day scholar with transport not found. Please configure general Day scholar transport fees.';
       }
+
+      return res.status(404).json({
+        message: errorMessage,
+        studentDetails: {
+          admissionNumber: student.admissionNumber,
+          fullName: student.fullName,
+          gradeLevel: student.gradeLevel,
+          boardingStatus: student.boardingStatus,
+          hasTransport: student.hasTransport,
+          transportRoute: student.transportRoute,
+        },
+        // Remove queryUsed as it's more complex now
+      });
+    }
+    // --- END FEE STRUCTURE QUERY LOGIC REFINEMENT ---
+
+
+    // Calculate fees paid based on Payment model (assuming current term logic is handled by frontend or overall logic)
+    const totalPaymentsMade = await Payment.aggregate([
+      { $match: { student: student._id } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const feesPaidForLife = totalPaymentsMade.length > 0 ? totalPaymentsMade[0].total : 0;
+
+    // Use feeRecord.totalAmount if that's where the total is stored,
+    // otherwise, calculate from components if totalCalculated isn't direct.
+    // Let's assume feeRecord.totalAmount is the base total as per your FeeStructure model example.
+    let totalTermlyFee = feeRecord.totalAmount;
+    let components = feeRecord.components ? [...feeRecord.components] : [];
+    let notes = feeRecord.notes || '';
+
+    // If student has transport and a specific route, add that specific transport fee
+    // Note: The `transportRoutes` object should be part of your `FeeStructure` model
+    // if you want to pull specific route costs from it.
+    if (student.hasTransport && student.boardingStatus === 'Day' && student.transportRoute) {
+        // This is a crucial point: If transport fees are *separate documents*
+        // you'd need another FeeStructure.findOne call here to fetch the transport cost.
+        // If they are embedded in the main fee structure (e.g., in a map/object called `transportRoutes`),
+        // then access them as `feeRecord.transportRoutes[student.transportRoute]`.
+
+        // Assuming `feeRecord.transportRoutes` exists on your FeeStructure model and is an object like `{ "route_name": amount }`
+        if (feeRecord.transportRoutes && feeRecord.transportRoutes[student.transportRoute]) {
+            const transportAmount = feeRecord.transportRoutes[student.transportRoute];
+            totalTermlyFee += transportAmount;
+            components.push({ name: `Transport Fee (${student.transportRoute})`, amount: transportAmount });
+            if (!notes) {
+                notes = `Total includes transport for ${student.transportRoute} route.`;
+            } else {
+                notes += ` Total also includes transport for ${student.transportRoute} route.`;
+            }
+        } else {
+            notes += ` Warning: Specific transport route '${student.transportRoute}' fee not found in fee structure. Fee calculated without this transport component.`;
+        }
     } else if (student.boardingStatus === 'Day' && !student.hasTransport) {
         notes = "Student is a Day scholar and does not use school transport.";
     }
 
 
-    // Add student details and calculated fees to the response
-    res.status(200).json({
-      studentDetails: {
-        admissionNumber: student.admissionNumber,
+    const remainingBalance = totalTermlyFee - feesPaidForLife;
+
+
+    // 5. Construct the comprehensive profile object
+    const studentProfile = {
+      student: {
         fullName: student.fullName,
+        admissionNumber: student.admissionNumber,
         gradeLevel: student.gradeLevel,
+        gender: student.gender,
         boardingStatus: student.boardingStatus,
         hasTransport: student.hasTransport,
         transportRoute: student.transportRoute,
-        currentBalance: student.currentBalance, // Include current balance
+        parent: {
+          name: student.parentName,
+          phone: student.parentPhone,
+          email: student.parentEmail,
+          address: student.parentAddress,
+        },
       },
-      termlyComponents: components,
-      totalCalculated: feeDetails.totalCalculated, // Base total from structure (without transport)
-      finalTotal: finalTotal, // Calculated total including transport
-      notes: notes,
-      _id: feeDetails._id, // Include original _id of fee structure for reference
-      // Only send availableRoutes if this specific query returned them and it's a 'day' scholar needing a route
-      availableRoutes: (feeRecord.transportRoutes && student.hasTransport && student.boardingStatus === 'Day' && !student.transportRoute)
-                         ? feeRecord.transportRoutes : undefined,
-    });
+      feeDetails: {
+        termlyComponents: components,
+        totalTermlyFee: totalTermlyFee,
+        feesPaid: feesPaidForLife,
+        remainingBalance: remainingBalance,
+        notes: notes,
+      },
+      paymentHistory: paymentHistory,
+    };
 
-  } catch (err) {
-    console.error('Error fetching student fees:', err.message);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(200).json(studentProfile);
+
+  } catch (error) {
+    console.error('Error in getStudentProfile:', error);
+    res.status(500).json({ message: 'Server error. Could not retrieve student profile.', error: error.message });
   }
 };
 
@@ -213,7 +270,7 @@ exports.getStudentFees = async (req, res) => {
  */
 exports.updateStudent = async (req, res) => {
     const { admissionNumber } = req.params;
-    const { fullName, gradeLevel, boardingStatus, hasTransport, transportRoute, parentName, parentPhone, currentBalance } = req.body;
+    const { fullName, gradeLevel, gender, boardingStatus, hasTransport, transportRoute, parentName, parentPhone, parentEmail, parentAddress, currentBalance } = req.body; // Added gender, email, address
 
     try {
         const student = await Student.findOne({ admissionNumber });
@@ -224,38 +281,41 @@ exports.updateStudent = async (req, res) => {
         // Update fields if provided
         if (fullName) student.fullName = fullName;
         if (gradeLevel) student.gradeLevel = gradeLevel;
+        if (gender) student.gender = gender; // Update gender
         if (parentName) student.parentName = parentName;
         if (parentPhone) student.parentPhone = parentPhone;
+        if (parentEmail !== undefined) student.parentEmail = parentEmail; // Allow setting to empty string
+        if (parentAddress !== undefined) student.parentAddress = parentAddress; // Allow setting to empty string
         if (currentBalance !== undefined) student.currentBalance = currentBalance;
 
         // Special handling for boardingStatus, hasTransport, and transportRoute
         if (boardingStatus) {
             student.boardingStatus = boardingStatus;
-            // If status changes to Boarding or invalid, clear transport details
             if (boardingStatus === 'Boarding') {
                 student.hasTransport = false;
                 student.transportRoute = '';
             } else if (boardingStatus === 'Day') {
-                // If provided in request, update. Otherwise, maintain existing or default.
                 student.hasTransport = hasTransport !== undefined ? hasTransport : student.hasTransport;
-                student.transportRoute = hasTransport && transportRoute ? transportRoute : '';
+                student.transportRoute = student.hasTransport && transportRoute ? transportRoute : '';
             }
         } else { // If boardingStatus is not provided in update, ensure transport is still consistent
             if (student.boardingStatus === 'Boarding') {
-                 student.hasTransport = false;
-                 student.transportRoute = '';
+                student.hasTransport = false;
+                student.transportRoute = '';
             } else if (student.boardingStatus === 'Day') {
                 student.hasTransport = hasTransport !== undefined ? hasTransport : student.hasTransport;
-                student.transportRoute = hasTransport && transportRoute ? transportRoute : '';
+                student.transportRoute = student.hasTransport && transportRoute ? transportRoute : '';
             }
         }
-
 
         await student.save();
         res.status(200).json({ message: 'Student updated successfully', student });
 
     } catch (error) {
         console.error('Error updating student:', error.message);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ message: 'Validation failed', errors: error.errors });
+        }
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -276,4 +336,99 @@ exports.deleteStudent = async (req, res) => {
         console.error('Error deleting student:', error.message);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
+};
+
+
+exports.getStudentProfile = async (req, res) => {
+  try {
+    const { admissionNumber } = req.params;
+
+    // 1. Find the student
+    const student = await Student.findOne({ admissionNumber });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    // 2. Find matching fee structure
+    const query = {
+      gradeLevel: student.gradeLevel,
+      boardingStatus: student.boardingStatus,
+      hasTransport: student.hasTransport,
+    };
+
+    let feeRecord = await FeeStructure.findOne(query).lean();
+
+    if (!feeRecord) {
+      return res.status(404).json({
+        message: 'Fee structure not found for this student\'s configuration.',
+        searchedCriteria: query
+      });
+    }
+
+    // 3. Calculate final fee with transport if applicable
+    let totalTermlyFee = feeRecord.totalCalculated;
+    let components = [...feeRecord.termlyComponents];
+    let notes = '';
+
+    if (student.hasTransport && student.transportRoute) {
+      const routeKey = student.transportRoute.toLowerCase();
+      const routeAmount = feeRecord.transportRoutes?.[routeKey];
+
+      if (routeAmount !== undefined) {
+        totalTermlyFee += routeAmount;
+        components.push({ name: `Transport (${student.transportRoute})`, amount: routeAmount });
+      } else {
+        notes = `Transport route "${student.transportRoute}" not found in fee structure. Base fee returned without transport.`;
+      }
+    }
+
+    // 4. Get total payments made
+    const totalPaymentsMade = await Payment.aggregate([
+      { $match: { student: student._id } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const feesPaidForLife = totalPaymentsMade.length > 0 ? totalPaymentsMade[0].total : 0;
+
+    // 5. Get payment history
+    const paymentHistory = await Payment.find({ student: student._id }).sort({ date: -1 });
+
+    // 6. Final calculation
+    const remainingBalance = totalTermlyFee - feesPaidForLife;
+
+    const studentProfile = {
+      student: {
+        fullName: student.fullName,
+        admissionNumber: student.admissionNumber,
+        gradeLevel: student.gradeLevel,
+        gender: student.gender,
+        boardingStatus: student.boardingStatus,
+        hasTransport: student.hasTransport,
+        transportRoute: student.transportRoute,
+        parent: {
+          name: student.parentName,
+          phone: student.parentPhone,
+          email: student.parentEmail,
+          address: student.parentAddress,
+        },
+      },
+      feeDetails: {
+        termlyComponents: components,
+        totalTermlyFee,
+        feesPaid: feesPaidForLife,
+        remainingBalance,
+        notes,
+      },
+      paymentHistory,
+    };
+
+    res.status(200).json(studentProfile);
+
+  } catch (error) {
+    console.error('Error in getStudentProfile:', error);
+    res.status(500).json({
+      message: 'Server error. Could not retrieve student profile.',
+      error: error.message
+    });
+  }
 };

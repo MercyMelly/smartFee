@@ -8,46 +8,74 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-  KeyboardAvoidingView, // For better keyboard handling
-  Platform, // For platform-specific styles
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // For a nice background
-import { SafeAreaView } from 'react-native-safe-area-context'; // For safe area handling
-import { Ionicons } from '@expo/vector-icons'; // For icons
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 
 const BASE_URL = 'http://10.71.113.17:3000/api'; // Your backend API base URL
 
-export default function StudentFeesLookupScreen() {
-  const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState(''); 
+export default function StudentProfileScreen() {
+  const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [studentFeeDetails, setStudentFeeDetails] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null); // Will hold ALL student data
 
-  const handleLookupFees = async () => {
+  const handleLookupProfile = async () => {
     if (!lookupAdmissionNumber) {
       Alert.alert('Missing ID', 'Please enter the student\'s Admission Number.');
       return;
     }
 
     setLoading(true);
-    setStudentFeeDetails(null); // Clear previous details
+    setStudentProfile(null); // Clear previous details
 
     try {
-      // Ensure your backend expects 'admissionNumber' or adjust here
-      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/fees`);
-
-      // Backend response structure might vary. Adjust data access based on your actual API output.
-      // Assuming response.data directly contains:
+      // THIS IS A CRITICAL ENDPOINT:
+      // Your backend needs to provide ALL student profile data, including:
+      // student basic info, parent info, fee structure, fees paid, remaining balance, and payment history.
+      // Example expected backend response structure:
       // {
-      //   studentDetails: { fullName, admissionNumber, gradeLevel, boardingStatus, hasTransport, transportRoute },
-      //   termlyComponents: [{ name, amount }],
-      //   finalTotal: number,
-      //   notes: string (optional)
+      //   student: {
+      //     fullName: string,
+      //     admissionNumber: string,
+      //     gradeLevel: string,
+      //     boardingStatus: string,
+      //     gender: string, // Assuming you add gender to student enrollment
+      //     hasTransport: boolean,
+      //     transportRoute: string,
+      //     parent: {
+      //       name: string,
+      //       phone: string,
+      //       email: string,
+      //       address: string,
+      //     }
+      //   },
+      //   feeDetails: { // This would be the calculated fees based on current term/student type
+      //     termlyComponents: [{ name: string, amount: number }],
+      //     totalTermlyFee: number,
+      //     feesPaid: number, // New: Total amount paid so far for the current term
+      //     remainingBalance: number, // New: TotalTermlyFee - FeesPaid
+      //     notes: string,
+      //   },
+      //   paymentHistory: [ // New: Array of past payments
+      //     {
+      //       paymentId: string,
+      //       date: string,
+      //       amount: number,
+      //       method: string,
+      //       // ... other payment details
+      //     }
+      //   ]
       // }
-      setStudentFeeDetails(response.data);
+      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); // New API endpoint
+
+      setStudentProfile(response.data);
     } catch (error) {
-      console.error('Error fetching student fees:', error.response?.data || error.message);
-      const errorMessage = error.response?.data?.message || 'Failed to fetch student fees. Please check the Admission Number.';
+      console.error('Error fetching student profile:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || 'Failed to fetch student profile. Please verify the Admission Number.';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -62,10 +90,10 @@ export default function StudentFeesLookupScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-            <Text style={styles.title}>Student Fee Lookup</Text>
+            <Text style={styles.title}>Student Profile</Text>
 
-            <View style={styles.inputCard}>
-              <Text style={styles.inputCardTitle}>Find Student Fees</Text>
+            <View style={styles.lookupCard}>
+              <Text style={styles.lookupCardTitle}>Search Student</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="search-outline" size={20} color="#757575" style={styles.icon} />
                 <TextInput
@@ -81,38 +109,84 @@ export default function StudentFeesLookupScreen() {
 
               <TouchableOpacity
                 style={styles.button}
-                onPress={handleLookupFees}
+                onPress={handleLookupProfile}
                 disabled={loading}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="receipt-outline" size={20} color="#fff" style={styles.buttonIcon} />
-                    <Text style={styles.buttonText}>Lookup Fees</Text>
+                    <Ionicons name="person-circle-outline" size={20} color="#fff" style={styles.buttonIcon} />
+                    <Text style={styles.buttonText}>View Profile</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
 
-            {studentFeeDetails && (
-              <View style={styles.feeDetailsCard}>
-                <Text style={styles.cardTitle}>
-                  <Ionicons name="cash-outline" size={22} color="#1B5E20" /> Fee Statement for{' '}
-                  {studentFeeDetails.studentDetails.fullName || `${studentFeeDetails.studentDetails.firstName} ${studentFeeDetails.studentDetails.lastName}`}
+            {studentProfile && (
+              <View style={styles.profileCard}>
+                {/* Student Core Details */}
+                <Text style={styles.sectionTitle}>
+                  <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Information
                 </Text>
-                <Text style={styles.cardSubtitle}>
-                  Grade: {studentFeeDetails.studentDetails.gradeLevel} | Status: {studentFeeDetails.studentDetails.boardingStatus}
-                </Text>
-
-                {studentFeeDetails.studentDetails.hasTransport && studentFeeDetails.studentDetails.transportRoute && (
-                  <Text style={styles.transportRouteText}>
-                    <Ionicons name="bus-outline" size={16} color="#388E3C" /> Transport Route: {studentFeeDetails.studentDetails.transportRoute}
-                  </Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Full Name:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.fullName}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Admission No.:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.admissionNumber}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Grade Level:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.gradeLevel}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Boarding Status:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.boardingStatus}</Text>
+                </View>
+                {studentProfile.student.gender && ( // Conditionally render gender if available
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Gender:</Text>
+                    <Text style={styles.detailValue}>{studentProfile.student.gender}</Text>
+                  </View>
+                )}
+                {studentProfile.student.hasTransport && studentProfile.student.transportRoute && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Transport Route:</Text>
+                    <Text style={styles.detailValue}>{studentProfile.student.transportRoute}</Text>
+                  </View>
                 )}
 
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                  <Ionicons name="people-outline" size={24} color="#388E3C" /> Parent/Guardian
+                </Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Name:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.parent.name}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Phone:</Text>
+                  <Text style={styles.detailValue}>{studentProfile.student.parent.phone}</Text>
+                </View>
+                {studentProfile.student.parent.email && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Email:</Text>
+                    <Text style={styles.detailValue}>{studentProfile.student.parent.email}</Text>
+                  </View>
+                )}
+                {studentProfile.student.parent.address && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Address:</Text>
+                    <Text style={styles.detailValue}>{studentProfile.student.parent.address}</Text>
+                  </View>
+                )}
+
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                  <Ionicons name="cash-outline" size={24} color="#388E3C" /> Fee Statement (Current Term)
+                </Text>
                 <View style={styles.feeItemsContainer}>
-                  {studentFeeDetails.termlyComponents && studentFeeDetails.termlyComponents.map((item, index) => (
+                  {studentProfile.feeDetails.termlyComponents && studentProfile.feeDetails.termlyComponents.map((item, index) => (
                     <View key={index} style={styles.feeItem}>
                       <Text style={styles.feeItemName}>{item.name}:</Text>
                       <Text style={styles.feeItemAmount}>KSh {item.amount.toLocaleString()}</Text>
@@ -120,23 +194,52 @@ export default function StudentFeesLookupScreen() {
                   ))}
                 </View>
 
-                <View style={styles.totalFeeRow}>
-                  <Text style={styles.totalFeeText}>Total Termly Fee:</Text>
-                  <Text style={styles.totalFeeAmount}>KSh {studentFeeDetails.finalTotal.toLocaleString()}</Text>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total Termly Fee:</Text>
+                  <Text style={styles.summaryValue}>KSh {studentProfile.feeDetails.totalTermlyFee.toLocaleString()}</Text>
+                </View>
+                <View style={[styles.summaryRow, styles.paidRow]}>
+                  <Text style={styles.summaryLabel}>Fees Paid:</Text>
+                  <Text style={styles.summaryValuePaid}>KSh {studentProfile.feeDetails.feesPaid.toLocaleString()}</Text>
+                </View>
+                <View style={[styles.summaryRow, styles.balanceRow]}>
+                  <Text style={styles.summaryLabel}>Remaining Balance:</Text>
+                  <Text style={styles.summaryValueBalance}>KSh {studentProfile.feeDetails.remainingBalance.toLocaleString()}</Text>
                 </View>
 
-                {studentFeeDetails.notes && (
+                {studentProfile.feeDetails.notes && (
                   <Text style={styles.feeNotes}>
-                    <Ionicons name="information-circle-outline" size={14} color="#757575" /> {studentFeeDetails.notes}
+                    <Ionicons name="information-circle-outline" size={14} color="#757575" /> {studentProfile.feeDetails.notes}
                   </Text>
                 )}
+
+                {studentProfile.paymentHistory && studentProfile.paymentHistory.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                      <Ionicons name="time-outline" size={24} color="#388E3C" /> Payment History
+                    </Text>
+                    <View style={styles.paymentHistoryContainer}>
+                      {studentProfile.paymentHistory.map((payment, index) => (
+                        <View key={index} style={styles.paymentItem}>
+                          <Text style={styles.paymentDate}>{new Date(payment.date).toLocaleDateString()}</Text>
+                          <Text style={styles.paymentAmount}>KSh {payment.amount.toLocaleString()}</Text>
+                          <Text style={styles.paymentMethod}>{payment.method}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+                {studentProfile.paymentHistory && studentProfile.paymentHistory.length === 0 && (
+                  <Text style={styles.noHistoryText}>No payment history recorded yet.</Text>
+                )}
+
               </View>
             )}
 
-            {!loading && !studentFeeDetails && lookupAdmissionNumber && (
+            {!loading && !studentProfile && lookupAdmissionNumber && (
                 <View style={styles.noResultsCard}>
                     <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
-                    <Text style={styles.noResultsText}>No fee details found for this student. Please verify the Admission Number.</Text>
+                    <Text style={styles.noResultsText}>No student profile found for this Admission Number. Please verify.</Text>
                 </View>
             )}
 
@@ -171,9 +274,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.5,
   },
-  inputCard: {
+  lookupCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF', // Neutral
+    backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 20,
     marginBottom: 25,
@@ -191,7 +294,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#C8E6C9', // Secondary Green for border
   },
-  inputCardTitle: {
+  lookupCardTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#388E3C', // Secondary Green
@@ -262,7 +365,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
-  feeDetailsCard: {
+  profileCard: {
     width: '100%',
     backgroundColor: '#FFFFFF', // Neutral
     borderRadius: 15,
@@ -282,34 +385,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#A5D6A7', // Secondary Green for border
   },
-  cardTitle: {
-    fontSize: 22,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1B5E20', // Primary Green
-    marginBottom: 5,
+    marginBottom: 15,
     textAlign: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8F5E9',
   },
-  cardSubtitle: {
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingBottom: 3,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F8F6', // Very light green line
+  },
+  detailLabel: {
     fontSize: 16,
-    color: '#388E3C', // Secondary Green
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  transportRouteText: {
-    fontSize: 15,
+    fontWeight: '500',
     color: '#555',
-    textAlign: 'center',
-    marginBottom: 15,
-    fontStyle: 'italic',
+    flex: 1, // Allows it to take up space and push value to right
   },
+  detailValue: {
+    fontSize: 16,
+    color: '#333',
+    flex: 2, // Allows it to take up more space
+    textAlign: 'right',
+  },
+  // Fee Details specific styles
   feeItemsContainer: {
     marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E8F5E9', // Light green separator
-    paddingTop: 10,
+    // No top border here, as sectionTitle has one
   },
   feeItem: {
     flexDirection: 'row',
@@ -317,7 +429,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingBottom: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F8F6', // Very light green line
+    borderBottomColor: '#F0F8F6',
   },
   feeItemName: {
     fontSize: 16,
@@ -329,23 +441,42 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#388E3C', // Secondary Green for amounts
   },
-  totalFeeRow: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5E9',
+  },
+  summaryLabel: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+  },
+  summaryValue: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+  },
+  paidRow: {
+    borderTopWidth: 0, // No border for paid
+  },
+  balanceRow: {
+    borderTopWidth: 2, // Thicker border for balance
+    borderTopColor: '#1B5E20', // Primary green for balance emphasis
     paddingTop: 15,
-    borderTopWidth: 2,
-    borderTopColor: '#2e7d32', // Darker green for emphasis
+    marginTop: 15,
   },
-  totalFeeText: {
-    fontSize: 19,
+  summaryValuePaid: {
+    fontSize: 17,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#388E3C', // Secondary green for paid amount
   },
-  totalFeeAmount: {
-    fontSize: 19,
+  summaryValueBalance: {
+    fontSize: 20, // Larger for balance
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#D32F2F', // Red for remaining balance (or another contrasting color)
   },
   feeNotes: {
     fontSize: 13,
@@ -353,6 +484,56 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  transportRouteText: {
+    fontSize: 15,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  paymentHistoryContainer: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5E9',
+    paddingTop: 10,
+  },
+  paymentItem: {
+    backgroundColor: '#F8F8F8', // Lighter background for history items
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: '#C8E6C9',
+  },
+  paymentDate: {
+    fontSize: 14,
+    color: '#555',
+    flex: 1,
+  },
+  paymentAmount: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#388E3C',
+    flex: 1,
+    textAlign: 'center',
+  },
+  paymentMethod: {
+    fontSize: 14,
+    color: '#757575',
+    fontStyle: 'italic',
+    flex: 1,
+    textAlign: 'right',
+  },
+  noHistoryText: {
+    fontSize: 14,
+    color: '#757575',
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   noResultsCard: {
     width: '100%',
