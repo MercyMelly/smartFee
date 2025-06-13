@@ -3,6 +3,7 @@ const feeData = [
     "gradeLevel": "PP1",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 15000 },
       { "name": "Activity Fee", "amount": 2000 },
@@ -31,6 +32,7 @@ const feeData = [
     "gradeLevel": "PP1",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 15000 },
       { "name": "Boarding Fee", "amount": 18000 },
@@ -43,6 +45,7 @@ const feeData = [
     "gradeLevel": "PP2",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 17000 },
       { "name": "Activity Fee", "amount": 2200 },
@@ -71,6 +74,7 @@ const feeData = [
     "gradeLevel": "PP2",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 17000 },
       { "name": "Boarding Fee", "amount": 20000 },
@@ -83,6 +87,7 @@ const feeData = [
     "gradeLevel": "Grade 1",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 25000 },
       { "name": "Activity Fee", "amount": 3000 },
@@ -111,6 +116,7 @@ const feeData = [
     "gradeLevel": "Grade 1",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 35000 },
       { "name": "Boarding Fee", "amount": 20000 },
@@ -123,6 +129,7 @@ const feeData = [
     "gradeLevel": "Grade 2",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 27000 },
       { "name": "Activity Fee", "amount": 3200 },
@@ -151,6 +158,7 @@ const feeData = [
     "gradeLevel": "Grade 2",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 37000 },
       { "name": "Boarding Fee", "amount": 22000 },
@@ -163,6 +171,7 @@ const feeData = [
     "gradeLevel": "Grade 3",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 29000 },
       { "name": "Activity Fee", "amount": 3400 },
@@ -191,6 +200,7 @@ const feeData = [
     "gradeLevel": "Grade 3",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 39000 },
       { "name": "Boarding Fee", "amount": 24000 },
@@ -203,6 +213,7 @@ const feeData = [
     "gradeLevel": "Grade 4",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 32000 },
       { "name": "Activity Fee", "amount": 3700 },
@@ -231,6 +242,7 @@ const feeData = [
     "gradeLevel": "Grade 4",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 42000 },
       { "name": "Boarding Fee", "amount": 27000 },
@@ -243,6 +255,7 @@ const feeData = [
     "gradeLevel": "Grade 5",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 35000 },
       { "name": "Activity Fee", "amount": 4000 },
@@ -271,6 +284,7 @@ const feeData = [
     "gradeLevel": "Grade 5",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 45000 },
       { "name": "Boarding Fee", "amount": 30000 },
@@ -283,6 +297,7 @@ const feeData = [
     "gradeLevel": "Grade 6",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 38000 },
       { "name": "Activity Fee", "amount": 4300 },
@@ -311,6 +326,7 @@ const feeData = [
     "gradeLevel": "Grade 6",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 48000 },
       { "name": "Boarding Fee", "amount": 33000 },
@@ -323,6 +339,7 @@ const feeData = [
     "gradeLevel": "Grade 7",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 42000 },
       { "name": "Activity Fee", "amount": 4700 },
@@ -353,6 +370,7 @@ const feeData = [
     "gradeLevel": "Grade 7",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 52000 },
       { "name": "Boarding Fee", "amount": 36000 },
@@ -366,6 +384,7 @@ const feeData = [
     "gradeLevel": "Grade 8",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 45000 },
       { "name": "Activity Fee", "amount": 5000 },
@@ -396,6 +415,7 @@ const feeData = [
     "gradeLevel": "Grade 8",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 55000 },
       { "name": "Boarding Fee", "amount": 39000 },
@@ -409,6 +429,7 @@ const feeData = [
     "gradeLevel": "Grade 9",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 60000 },
       { "name": "Activity Fee", "amount": 5000 },
@@ -439,6 +460,7 @@ const feeData = [
     "gradeLevel": "Grade 9",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 60000 },
       { "name": "Boarding Fee", "amount": 40000 },
@@ -452,6 +474,7 @@ const feeData = [
     "gradeLevel": "Grade 10",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 65000 },
       { "name": "Activity Fee", "amount": 5500 },
@@ -482,6 +505,7 @@ const feeData = [
     "gradeLevel": "Grade 10",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 65000 },
       { "name": "Boarding Fee", "amount": 45000 },
@@ -495,6 +519,7 @@ const feeData = [
     "gradeLevel": "Grade 11",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 70000 },
       { "name": "Activity Fee", "amount": 6000 },
@@ -525,6 +550,7 @@ const feeData = [
     "gradeLevel": "Grade 11",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 70000 },
       { "name": "Boarding Fee", "amount": 50000 },
@@ -538,6 +564,7 @@ const feeData = [
     "gradeLevel": "Grade 12",
     "boardingStatus": "Day",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 75000 },
       { "name": "Activity Fee", "amount": 6500 },
@@ -568,6 +595,7 @@ const feeData = [
     "gradeLevel": "Grade 12",
     "boardingStatus": "Boarding",
     "hasTransport": false,
+    "transportRoute": "", // Added
     "termlyComponents": [
       { "name": "Tuition Fee", "amount": 75000 },
       { "name": "Boarding Fee", "amount": 55000 },
@@ -578,5 +606,3 @@ const feeData = [
     "totalCalculated": 144600
   }
 ];
-
-db.feeStructure.insertMany(feeData);

@@ -15,8 +15,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system'; // Import for file system operations
+import * as IntentLauncher from 'expo-intent-launcher'; // Import for Android to open PDF
+import * as WebBrowser from 'expo-web-browser'; // Import for iOS to open PDF
+import * as Sharing from 'expo-sharing';
 
-const BASE_URL = 'http://10.71.113.17:3000/api'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api'; // Your backend API base URL
 
 export default function StudentProfileScreen() {
   const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
@@ -33,45 +37,7 @@ export default function StudentProfileScreen() {
     setStudentProfile(null); // Clear previous details
 
     try {
-      // THIS IS A CRITICAL ENDPOINT:
-      // Your backend needs to provide ALL student profile data, including:
-      // student basic info, parent info, fee structure, fees paid, remaining balance, and payment history.
-      // Example expected backend response structure:
-      // {
-      //   student: {
-      //     fullName: string,
-      //     admissionNumber: string,
-      //     gradeLevel: string,
-      //     boardingStatus: string,
-      //     gender: string, // Assuming you add gender to student enrollment
-      //     hasTransport: boolean,
-      //     transportRoute: string,
-      //     parent: {
-      //       name: string,
-      //       phone: string,
-      //       email: string,
-      //       address: string,
-      //     }
-      //   },
-      //   feeDetails: { // This would be the calculated fees based on current term/student type
-      //     termlyComponents: [{ name: string, amount: number }],
-      //     totalTermlyFee: number,
-      //     feesPaid: number, // New: Total amount paid so far for the current term
-      //     remainingBalance: number, // New: TotalTermlyFee - FeesPaid
-      //     notes: string,
-      //   },
-      //   paymentHistory: [ // New: Array of past payments
-      //     {
-      //       paymentId: string,
-      //       date: string,
-      //       amount: number,
-      //       method: string,
-      //       // ... other payment details
-      //     }
-      //   ]
-      // }
-      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); // New API endpoint
-
+      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); // Existing API endpoint
       setStudentProfile(response.data);
     } catch (error) {
       console.error('Error fetching student profile:', error.response?.data || error.message);
@@ -82,6 +48,85 @@ export default function StudentProfileScreen() {
     }
   };
 
+  // --- NEW FUNCTION: Handle receipt generation and download ---
+ 
+//  const handleGenerateReceipt = async (paymentId, transactionReference) => {
+//     try {
+//       Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
+//       const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
+//       const fileName = `receipt_${transactionReference || paymentId}.pdf`;
+//       const downloadPath = FileSystem.documentDirectory + fileName;
+
+//       const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
+//         headers: {
+//           'Content-Type': 'application/pdf', // Ensure the server sends this header
+//         },
+//       });
+
+//       Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
+
+//       // Open the downloaded PDF based on platform
+//       if (Platform.OS === 'ios') {
+//         await WebBrowser.openBrowserAsync(uri); // iOS can open local files in browser
+//       } else {
+//         // Android requires IntentLauncher
+//         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+//           data: uri,
+//           flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+//           type: 'application/pdf',
+//         });
+//       }
+//     } catch (error) {
+//       console.error('Error downloading/generating receipt:', error.response?.data || error.message);
+//       Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
+//     }
+//   };
+
+  const handleGenerateReceipt = async (paymentId, transactionReference) => {
+        try {
+            Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
+            const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
+            const fileName = `receipt_${transactionReference || paymentId}.pdf`;
+            const downloadPath = FileSystem.documentDirectory + fileName;
+
+            const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
+                headers: {
+                    'Content-Type': 'application/pdf',
+                },
+            });
+
+            Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
+
+            // --- FIX HERE: Use Expo Sharing for cross-platform file opening ---
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, {
+                    mimeType: 'application/pdf',
+                    UTI: 'com.adobe.pdf', // iOS specific
+                    dialogTitle: 'Open Receipt',
+                });
+            } else {
+                // Fallback for older Expo versions or if sharing is not available (less common)
+                // This fallback might still face FileUriExposedException if not careful,
+                // but Expo should handle it usually.
+                if (Platform.OS === 'ios') {
+                    await WebBrowser.openBrowserAsync(uri);
+                } else {
+                    // For Android, if Sharing is not an option, you would need
+                    // to explicitly get a content URI using FileSystem.getContentUriAsync
+                    // before launching the intent.
+                    const contentUri = await FileSystem.getContentUriAsync(uri);
+                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                        data: contentUri, // Use contentUri here
+                        flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+                        type: 'application/pdf',
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error downloading/generating receipt:', error.response?.data || error.message || error);
+            Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
+        }
+    };
   return (
     <LinearGradient colors={['#F0F8F6', '#E8F5E9']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
@@ -221,9 +266,24 @@ export default function StudentProfileScreen() {
                     <View style={styles.paymentHistoryContainer}>
                       {studentProfile.paymentHistory.map((payment, index) => (
                         <View key={index} style={styles.paymentItem}>
-                          <Text style={styles.paymentDate}>{new Date(payment.date).toLocaleDateString()}</Text>
-                          <Text style={styles.paymentAmount}>KSh {payment.amount.toLocaleString()}</Text>
-                          <Text style={styles.paymentMethod}>{payment.method}</Text>
+                          <View style={styles.paymentDetailsLeft}>
+                            <Text style={styles.paymentDate}>{new Date(payment.paymentDate).toLocaleDateString()}</Text>
+                            <Text style={styles.paymentAmount}>KSh {payment.amountPaid.toLocaleString()}</Text>
+                          </View>
+                          <View style={styles.paymentDetailsRight}>
+                            <Text style={styles.paymentMethod}>{payment.paymentMethod}</Text>
+                            {payment.transactionReference && (
+                              <Text style={styles.paymentReference}>Ref: {payment.transactionReference}</Text>
+                            )}
+                            {/* --- NEW: Generate Receipt Button --- */}
+                            <TouchableOpacity
+                              style={styles.generateReceiptButton}
+                              onPress={() => handleGenerateReceipt(payment._id, payment.transactionReference)}
+                            >
+                              <Ionicons name="receipt-outline" size={16} color="#fff" />
+                              <Text style={styles.generateReceiptButtonText}>Receipt</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -509,24 +569,49 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#C8E6C9',
   },
+  paymentDetailsLeft: {
+    flex: 2,
+    alignItems: 'flex-start',
+  },
+  paymentDetailsRight: {
+    flex: 1.5,
+    alignItems: 'flex-end',
+  },
   paymentDate: {
     fontSize: 14,
     color: '#555',
-    flex: 1,
   },
   paymentAmount: {
     fontSize: 15,
     fontWeight: 'bold',
     color: '#388E3C',
-    flex: 1,
-    textAlign: 'center',
+    marginTop: 2,
   },
   paymentMethod: {
     fontSize: 14,
     color: '#757575',
     fontStyle: 'italic',
-    flex: 1,
-    textAlign: 'right',
+  },
+  paymentReference: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 2,
+  },
+  generateReceiptButton: {
+    backgroundColor: '#0288D1', 
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    marginTop: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generateReceiptButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 5,
   },
   noHistoryText: {
     fontSize: 14,

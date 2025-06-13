@@ -2,12 +2,8 @@ const Student = require('../models/studentsDB');
 const FeeStructure = require('../models/feeStructure');
 const Payment = require('../models/paymentsDB');
 
-/**
- * @desc    Registers a new student.
- * Automatically sets hasTransport and transportRoute based on boardingStatus.
- * @route   POST /api/students/register
- * @access  Public (consider making it private/admin only in production)
- */
+
+
 exports.registerStudent = async (req, res) => {
   const {
     fullName,
@@ -339,96 +335,241 @@ exports.deleteStudent = async (req, res) => {
 };
 
 
+// exports.getStudentProfile = async (req, res) => {
+//   try {
+//     const { admissionNumber } = req.params;
+
+//     // 1. Find the student
+//     const student = await Student.findOne({ admissionNumber });
+
+//     if (!student) {
+//       return res.status(404).json({ message: 'Student not found.' });
+//     }
+
+//     // 2. Find matching fee structure
+//     const query = {
+//       gradeLevel: student.gradeLevel,
+//       boardingStatus: student.boardingStatus,
+//       hasTransport: student.hasTransport,
+//     };
+
+//     let feeRecord = await FeeStructure.findOne(query).lean();
+
+//     if (!feeRecord) {
+//       return res.status(404).json({
+//         message: 'Fee structure not found for this student\'s configuration.',
+//         searchedCriteria: query
+//       });
+//     }
+
+//     // 3. Calculate final fee with transport if applicable
+//     let totalTermlyFee = feeRecord.totalCalculated;
+//     let components = [...feeRecord.termlyComponents];
+//     let notes = '';
+
+//     if (student.hasTransport && student.transportRoute) {
+//       const routeKey = student.transportRoute.toLowerCase();
+//       const routeAmount = feeRecord.transportRoutes?.[routeKey];
+
+//       if (routeAmount !== undefined) {
+//         totalTermlyFee += routeAmount;
+//         components.push({ name: `Transport (${student.transportRoute})`, amount: routeAmount });
+//       } else {
+//         notes = `Transport route "${student.transportRoute}" not found in fee structure. Base fee returned without transport.`;
+//       }
+//     }
+
+//     // 4. Get total payments made
+//     const totalPaymentsMade = await Payment.aggregate([
+//       { $match: { student: student._id } },
+//       { $group: { _id: null, total: { $sum: '$amount' } } }
+//     ]);
+//     const feesPaidForLife = totalPaymentsMade.length > 0 ? totalPaymentsMade[0].total : 0;
+
+//     // 5. Get payment history
+//     const paymentHistory = await Payment.find({ student: student._id }).sort({ date: -1 });
+
+//     // 6. Final calculation
+//     const remainingBalance = totalTermlyFee - feesPaidForLife;
+
+//     const studentProfile = {
+//       student: {
+//         fullName: student.fullName,
+//         admissionNumber: student.admissionNumber,
+//         gradeLevel: student.gradeLevel,
+//         gender: student.gender,
+//         boardingStatus: student.boardingStatus,
+//         hasTransport: student.hasTransport,
+//         transportRoute: student.transportRoute,
+//         parent: {
+//           name: student.parentName,
+//           phone: student.parentPhone,
+//           email: student.parentEmail,
+//           address: student.parentAddress,
+//         },
+//       },
+//       feeDetails: {
+//         termlyComponents: components,
+//         totalTermlyFee,
+//         feesPaid: feesPaidForLife,
+//         remainingBalance,
+//         notes,
+//       },
+//       paymentHistory,
+//     };
+
+//     res.status(200).json(studentProfile);
+
+//   } catch (error) {
+//     console.error('Error in getStudentProfile:', error);
+//     res.status(500).json({
+//       message: 'Server error. Could not retrieve student profile.',
+//       error: error.message
+//     });
+//   }
+// };
+
+
+
 exports.getStudentProfile = async (req, res) => {
-  try {
-    const { admissionNumber } = req.params;
+    try {
+        const { admissionNumber } = req.params;
 
-    // 1. Find the student
-    const student = await Student.findOne({ admissionNumber });
+        // 1. Find the student
+        const student = await Student.findOne({ admissionNumber });
 
-    if (!student) {
-      return res.status(404).json({ message: 'Student not found.' });
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        // 2. Find matching fee structure
+        const query = {
+            gradeLevel: student.gradeLevel,
+            boardingStatus: student.boardingStatus,
+            hasTransport: student.hasTransport,
+        };
+
+        let feeRecord = await FeeStructure.findOne(query).lean();
+
+        if (!feeRecord) {
+            // It's generally better to send partial data with a warning
+            // than a full 404 if the student exists but fee structure doesn't.
+            // Adjust based on your UX preference.
+            return res.status(200).json({
+                message: 'Fee structure not found for this student\'s configuration. Fee details may be incomplete.',
+                student: {
+                    fullName: student.fullName,
+                    admissionNumber: student.admissionNumber,
+                    gradeLevel: student.gradeLevel,
+                    gender: student.gender,
+                    boardingStatus: student.boardingStatus,
+                    hasTransport: student.hasTransport,
+                    transportRoute: student.transportRoute,
+                    parent: {
+                        name: student.parentName,
+                        phone: student.parentPhone,
+                        email: student.parentEmail,
+                        address: student.parentAddress,
+                    },
+                },
+                feeDetails: {
+                    termlyComponents: [], // No components if no fee structure
+                    totalTermlyFee: 0,
+                    feesPaid: student.feeDetails.feesPaid, // Still pull from student's record
+                    remainingBalance: student.feeDetails.remainingBalance, // Still pull from student's record
+                    notes: 'No matching fee structure found for current term.'
+                },
+                paymentHistory: await Payment.find({ student: student._id }).sort({ paymentDate: -1 }), // Fetch history anyway
+            });
+        }
+
+        // 3. Calculate final fee with transport if applicable
+        let totalTermlyFee = feeRecord.totalCalculated;
+        let components = [...feeRecord.termlyComponents];
+        let notes = '';
+
+        // if (student.hasTransport && student.transportRoute) {
+        //     // Using .get() for Map, and checking for existence
+        //     const routeAmount = feeRecord.transportRoutes && feeRecord.transportRoutes.get(student.transportRoute.toLowerCase());
+
+        //     if (routeAmount !== undefined) {
+        //         totalTermlyFee += routeAmount;
+        //         components.push({ name: `Transport (${student.transportRoute})`, amount: routeAmount });
+        //     } else {
+        //         // Better note for the user if route not found
+        //         notes = `Note: Transport route "${student.transportRoute}" not found in fee structure. Transport fee not included in total.`;
+        //     }
+        // }
+
+        if (student.hasTransport && student.transportRoute) {
+            const routeKey = student.transportRoute.toLowerCase();
+            // --- FIX HERE: Access like a plain object, not a Map ---
+            const routeAmount = feeRecord.transportRoutes?.[routeKey]; // Use bracket notation for object access
+
+            if (routeAmount !== undefined) { // Check if the amount was found
+                totalTermlyFee += routeAmount;
+                components.push({ name: `Transport (${student.transportRoute})`, amount: routeAmount });
+            } else {
+                notes = `Note: Transport route "${student.transportRoute}" not found in fee structure. Transport fee not included in total.`;
+            }
+        }
+
+
+        // 4. Get total payments made
+        // *** FIX 1: Change '$amount' to '$amountPaid' ***
+        const totalPaymentsMadeResult = await Payment.aggregate([
+            { $match: { student: student._id } },
+            { $group: { _id: null, total: { $sum: '$amountPaid' } } } // Corrected field name
+        ]);
+        const feesPaidForLife = totalPaymentsMadeResult.length > 0 ? totalPaymentsMadeResult[0].total : 0;
+
+        // 5. Get payment history
+        // *** FIX 2: Change 'date' to 'paymentDate' or 'createdAt' ***
+        // Assuming your schema has 'paymentDate' (if explicitly defined) or 'createdAt' (from timestamps)
+        const paymentHistory = await Payment.find({ student: student._id }).sort({ paymentDate: -1 }); // Or { createdAt: -1 } if only using timestamps
+
+        // 6. Final calculation (based on current term's total fee and total payments for that student)
+        // IMPORTANT: The `remainingBalance` in your student schema is for the current term.
+        // If `feesPaidForLife` includes payments for *previous* terms, this calculation might be off
+        // for the *current term's* balance.
+        // Assuming `feesPaidForLife` IS the sum of all payments, and `totalTermlyFee` is the CURRENT term's fee.
+        // This is a common pattern, but be aware of how you define "balance".
+        const remainingBalance = totalTermlyFee - feesPaidForLife;
+
+
+        const studentProfile = {
+            student: {
+                fullName: student.fullName,
+                admissionNumber: student.admissionNumber,
+                gradeLevel: student.gradeLevel,
+                gender: student.gender,
+                boardingStatus: student.boardingStatus,
+                hasTransport: student.hasTransport,
+                transportRoute: student.transportRoute,
+                parent: {
+                    name: student.parentName,
+                    phone: student.parentPhone,
+                    email: student.parentEmail,
+                    address: student.parentAddress,
+                },
+            },
+            feeDetails: {
+                termlyComponents: components,
+                totalTermlyFee, // Short-hand for totalTermlyFee: totalTermlyFee
+                feesPaid: feesPaidForLife, // This is the total payments made over all time for the student
+                remainingBalance, // This is the totalTermlyFee minus total payments made
+                notes,
+            },
+            paymentHistory,
+        };
+
+        res.status(200).json(studentProfile);
+
+    } catch (error) {
+        console.error('Error in getStudentProfile:', error);
+        res.status(500).json({
+            message: 'Server error. Could not retrieve student profile.',
+            error: error.message
+        });
     }
-
-    // 2. Find matching fee structure
-    const query = {
-      gradeLevel: student.gradeLevel,
-      boardingStatus: student.boardingStatus,
-      hasTransport: student.hasTransport,
-    };
-
-    let feeRecord = await FeeStructure.findOne(query).lean();
-
-    if (!feeRecord) {
-      return res.status(404).json({
-        message: 'Fee structure not found for this student\'s configuration.',
-        searchedCriteria: query
-      });
-    }
-
-    // 3. Calculate final fee with transport if applicable
-    let totalTermlyFee = feeRecord.totalCalculated;
-    let components = [...feeRecord.termlyComponents];
-    let notes = '';
-
-    if (student.hasTransport && student.transportRoute) {
-      const routeKey = student.transportRoute.toLowerCase();
-      const routeAmount = feeRecord.transportRoutes?.[routeKey];
-
-      if (routeAmount !== undefined) {
-        totalTermlyFee += routeAmount;
-        components.push({ name: `Transport (${student.transportRoute})`, amount: routeAmount });
-      } else {
-        notes = `Transport route "${student.transportRoute}" not found in fee structure. Base fee returned without transport.`;
-      }
-    }
-
-    // 4. Get total payments made
-    const totalPaymentsMade = await Payment.aggregate([
-      { $match: { student: student._id } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const feesPaidForLife = totalPaymentsMade.length > 0 ? totalPaymentsMade[0].total : 0;
-
-    // 5. Get payment history
-    const paymentHistory = await Payment.find({ student: student._id }).sort({ date: -1 });
-
-    // 6. Final calculation
-    const remainingBalance = totalTermlyFee - feesPaidForLife;
-
-    const studentProfile = {
-      student: {
-        fullName: student.fullName,
-        admissionNumber: student.admissionNumber,
-        gradeLevel: student.gradeLevel,
-        gender: student.gender,
-        boardingStatus: student.boardingStatus,
-        hasTransport: student.hasTransport,
-        transportRoute: student.transportRoute,
-        parent: {
-          name: student.parentName,
-          phone: student.parentPhone,
-          email: student.parentEmail,
-          address: student.parentAddress,
-        },
-      },
-      feeDetails: {
-        termlyComponents: components,
-        totalTermlyFee,
-        feesPaid: feesPaidForLife,
-        remainingBalance,
-        notes,
-      },
-      paymentHistory,
-    };
-
-    res.status(200).json(studentProfile);
-
-  } catch (error) {
-    console.error('Error in getStudentProfile:', error);
-    res.status(500).json({
-      message: 'Server error. Could not retrieve student profile.',
-      error: error.message
-    });
-  }
 };

@@ -1,38 +1,39 @@
+
 const mongoose = require('mongoose');
 
 const feeStructureSchema = new mongoose.Schema({
   gradeLevel: { type: String, required: true },
-  boardingStatus: { type: String, required: true, enum: ['Day', 'Boarding'] }, 
+  boardingStatus: { type: String, required: true, enum: ['Day', 'Boarding'] },
   hasTransport: { type: Boolean, required: true },
-  transportRoutes: {
+  transportRoutes: { 
     type: Map,
-    of: Number, 
-    default: {} 
+    of: Number,
+    default: {}
   },
   termlyComponents: [{
     name: { type: String, required: true },
     amount: { type: Number, required: true }
   }],
-  totalAmount: { 
+  totalAmount: {
     type: Number,
-    required: true, 
+    required: true,
     default: 0
   },
-
-  totalCalculated: {
+  totalCalculated: { 
     type: Number,
-    required: true, 
+    required: true,
     default: 0
   },
-  notes: { 
+  notes: {
     type: String,
     trim: true
   }
 }, {
-  timestamps: true 
+  timestamps: true
 });
 
-feeStructureSchema.index({ gradeLevel: 1, boardingStatus: 1, hasTransport: 1, transportRoute: 1 }, { unique: true });
+
+feeStructureSchema.index({ gradeLevel: 1, boardingStatus: 1, hasTransport: 1 }, { unique: true });
 
 
 module.exports = mongoose.model('FeeStructure', feeStructureSchema, 'feeStructure');

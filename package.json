@@ -40,7 +40,8 @@
     "react-native-vector-icons": "^10.2.0",
     "styled": "^1.0.0",
     "yup": "^1.6.1",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.5",
+    "expo-sharing": "~13.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

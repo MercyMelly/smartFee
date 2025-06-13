@@ -12,7 +12,8 @@ import ForgotPassword from './screens/forgotPassword';
 import ResetPassword from './screens/resetPassword';
 
 // Admin Screens
-import AdminHome from './screens/adminHome';
+import {AdminHome} from './screens/adminHome';
+
 
 // Bursar Screens
 import BursarDashboard from './screens/bursarHome';

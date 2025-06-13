@@ -13,10 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 
-// --- API Configuration ---
-const BASE_URL = 'http://10.71.113.17:3000/api/fees'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api/fees'; 
 
-// --- Static Payment Details (These typically don't change based on fee lookup) ---
 const SCHOOL_BANK_DETAILS = {
   bankName: "Equity Bank Kenya",
   accountName: "ABC School Fees Account",
@@ -58,7 +56,6 @@ export default function FeeStructure() {
   const [availableGrades, setAvailableGrades] = useState([]);
   const [availableRoutes, setAvailableRoutes] = useState([]);
 
-  // --- Initial Setup: Populate Grade Levels ---
   const ALL_VALID_GRADES = [
     "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
     "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9",
@@ -68,21 +65,20 @@ export default function FeeStructure() {
   useEffect(() => {
     setAvailableGrades(['', ...ALL_VALID_GRADES.sort()]);
     if (ALL_VALID_GRADES.length > 0) {
-      setSelectedGrade(ALL_VALID_GRADES[0]); // Set a default grade on mount
+      setSelectedGrade(ALL_VALID_GRADES[0]); 
     }
   }, []);
 
-  // --- API Call for Fee Structure ---
   const fetchFeeStructure = useCallback(async () => {
     if (!selectedGrade || !selectedBoardingStatus) {
       setCurrentFeeStructure(null);
-      setAvailableRoutes([]); // Clear routes if selections are incomplete
-      setSelectedTransportRoute(''); // Also clear selected route
+      setAvailableRoutes([]); 
+      setSelectedTransportRoute(''); 
       return;
     }
 
     setLoading(true);
-    setCurrentFeeStructure(null); // Clear previous fee structure
+    setCurrentFeeStructure(null); 
 
     try {
       const params = {
@@ -100,7 +96,6 @@ export default function FeeStructure() {
       const response = await axios.get(`${BASE_URL}/structure`, { params });
       const feeData = response.data;
 
-      // Update available routes based on the fetched data, regardless of whether a route was selected
       if (feeData.transportRoutes && selectedBoardingStatus === 'Day') {
         setAvailableRoutes(['', ...Object.keys(feeData.transportRoutes).sort()]);
       } else {
@@ -127,26 +122,23 @@ export default function FeeStructure() {
       Alert.alert('Error', errorMessage);
       setCurrentFeeStructure(null);
       setAvailableRoutes([]);
-      setSelectedTransportRoute(''); // Clear route on error
+      setSelectedTransportRoute(''); 
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedBoardingStatus, selectedTransportRoute]); // Dependencies for useCallback
+  }, [selectedGrade, selectedBoardingStatus, selectedTransportRoute]); 
 
-  // Trigger fetch when selections change
   useEffect(() => {
     fetchFeeStructure();
-  }, [fetchFeeStructure]); // Depend on the useCallback function
+  }, [fetchFeeStructure]); 
 
-  // Effect to reset transport route when boarding status changes from Day to Boarding/empty
-  // or when switching grades might affect transport availability.
+
   useEffect(() => {
     if (selectedBoardingStatus === 'Boarding' || selectedBoardingStatus === '') {
       setSelectedTransportRoute('');
-      setAvailableRoutes([]); // Clear routes if not Day
+      setAvailableRoutes([]);
     }
-    // No need for 'else' here, as fetchFeeStructure handles setting availableRoutes when status is 'Day'
-  }, [selectedBoardingStatus]); // Only depends on boarding status
+  }, [selectedBoardingStatus]); 
 
 
   return (

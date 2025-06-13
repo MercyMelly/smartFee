@@ -15,8 +15,11 @@
     "@react-navigation/stack": "^7.3.3",
     "axios": "^1.9.0",
     "expo": "~53.0.10",
+    "expo-file-system": "^18.1.10",
+    "expo-intent-launcher": "^12.1.5",
     "expo-linear-gradient": "~14.1.5",
     "expo-status-bar": "~2.2.3",
+    "expo-web-browser": "^14.1.6",
     "formik": "^2.4.6",
     "lodash": "^4.17.21",
     "react": "19.0.0",
@@ -29,7 +32,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-navigation": "^5.0.0",
     "yup": "^1.6.1",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.5",
+    "expo-sharing": "~13.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

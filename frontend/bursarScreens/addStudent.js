@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const BASE_URL = 'http://10.71.113.17:3000/api'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api'; // Your backend API base URL
 
 export default function AddStudent({ navigation }) {
   // Student State

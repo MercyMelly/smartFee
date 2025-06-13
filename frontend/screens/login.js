@@ -23,7 +23,7 @@ export default function Login({ navigation }) {
   const handleLogin = async (values, { setSubmitting }) => {
     
     try {
-      const res = await axios.post('http://10.71.113.17:3000/api/login', values);
+      const res = await axios.post('http://10.71.114.108:3000/api/login', values);
       const { token, role,user } = res.data;
 
       if (!token) {
@@ -31,12 +31,11 @@ export default function Login({ navigation }) {
         return;
       }
 
-      // await AsyncStorage.setItem('token', token),
       await login({
         token,
         role,
         email: values.email,
-        user: res.data.user || { email: values.email, role }  // fallback
+        user: res.data.user || { email: values.email, role }  
       });
       switch (role) {
         case 'admin':

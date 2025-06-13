@@ -53,7 +53,7 @@ export default function Signup({ navigation }) {
         password,
         role,
       };
-      const res = await axios.post('http://10.71.113.17:3000/api/signup', userData)
+      const res = await axios.post('http://10.71.114.108:3000/api/signup', userData)
       {console.log(res.data)};
         Alert.alert('User created successfully', 'You can now login with your credentials',[
         {

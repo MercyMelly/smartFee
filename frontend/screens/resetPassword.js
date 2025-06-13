@@ -40,7 +40,7 @@ export default function ResetPassword({ navigation }) {
     setLoading(true);
     try {
       const response = await axios.post(
-        'http://10.71.113.17:3000/api/reset-password',
+        'http://10.71.114.108:3000/api/reset-password',
         { password: newPassword, confirmPassword },
         {
           headers: {
