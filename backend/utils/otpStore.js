@@ -7,21 +7,6 @@ const saveOtp = (email, otp) => {
   });
 };
 
-// const verifyOtp = (email, inputOtp) => {
-//   const record = otpStore.get(email);
-//   if (!record) return false;
-
-//   const isExpired = Date.now() > record.expiresAt;
-//   const isMatch = record.otp === inputOtp;
-
-//   if (!isExpired && isMatch) {
-//     otpStore.delete(email); 
-//     return true;
-//   }
-
-//   return false;
-// };
-
 const verifyOtp = (email, inputOtp) => {
   const record = otpStore.get(email);
   if (!record) return false;

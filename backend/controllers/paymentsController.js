@@ -4,7 +4,6 @@ const Student = require('../models/studentsDB');
 const FeeStructure = require('../models/feeStructure');
 const { generateReceiptPdf } = require('../utils/receiptGen');
 
-
 exports.recordPayment = async (req, res) => {
     const {
         admissionNumber,
@@ -17,7 +16,6 @@ exports.recordPayment = async (req, res) => {
         notes
     } = req.body;
 
-    // --- Input Validation (no changes needed here) ---
     if (!admissionNumber || !amountPaid || !paymentMethod) {
         return res.status(400).json({ message: 'Missing required payment details (admissionNumber, amountPaid, paymentMethod).' });
     }
@@ -33,15 +31,13 @@ exports.recordPayment = async (req, res) => {
         if (!inKindItemType || inKindItemType.trim() === '') {
             return res.status(400).json({ message: 'In-Kind Item Type is required for In-Kind payments.' });
         }
-        if (isNaN(parseFloat(inKindQuantity)) || parseFloat(parseFloat(inKindQuantity)) <= 0) { // Fixed a typo: parseFloat(parseFloat(inKindQuantity)) -> parseFloat(inKindQuantity)
+        if (isNaN(parseFloat(inKindQuantity)) || parseFloat(parseFloat(inKindQuantity)) <= 0) { 
             return res.status(400).json({ message: 'In-Kind Quantity must be a positive number for In-Kind payments.' });
         }
-        // If no transactionReference is provided for In-Kind, generate one
         if (!transactionReference || transactionReference.trim() === '') {
             req.body.transactionReference = `IN-KIND-${Date.now()}`;
         }
     }
-    // --- End Input Validation ---
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -50,7 +46,7 @@ exports.recordPayment = async (req, res) => {
         const student = await Student.findOne({ admissionNumber }).session(session);
 
         if (!student) {
-            await session.abortTransaction(); // Abort if student not found
+            await session.abortTransaction(); 
             return res.status(404).json({ message: 'Student not found.' });
         }
 
@@ -67,7 +63,7 @@ exports.recordPayment = async (req, res) => {
         console.log('Found Fee Record:', feeRecord);
 
         if (!feeRecord) {
-            await session.abortTransaction(); // Abort if fee record not found
+            await session.abortTransaction(); 
             return res.status(404).json({
                 message: `Fee structure not found for student with Grade: ${student.gradeLevel}, ` +
                          `Boarding: ${student.boardingStatus}, Transport: ${student.hasTransport ? 'Yes' : 'No'}. ` +
@@ -91,10 +87,6 @@ exports.recordPayment = async (req, res) => {
                 console.log(`Added transport cost of ${transportCost} for route '${student.transportRoute}'. New total: ${currentTotalFee}`);
             } else {
                 console.warn(`Fee structure for grade ${student.gradeLevel} (Day, hasTransport: true) does not have a defined cost for transport route: '${student.transportRoute}'.`);
-                // Consider how you want to handle this:
-                // Option A: Throw an error and abort the transaction.
-                // throw new Error(`Missing transport cost for route: ${student.transportRoute}`);
-                // Option B: Log a warning and proceed without adding transport cost. (Current behavior)
             }
         }
 
@@ -122,35 +114,23 @@ exports.recordPayment = async (req, res) => {
             },
             { session }
         );
-
-        // --- Commit Transaction FIRST before sending response ---
         await session.commitTransaction();
-
-        // ONLY send the response AFTER the transaction is successfully committed.
-        // This is where your previous issue likely was.
         res.status(201).json({
             message: 'Payment recorded successfully!',
             payment: newPayment,
             updatedStudentBalance: {
-                // Ensure these reflect the *new* state after the increment.
-                // To get the absolute latest, you might need to re-fetch the student,
-                // or carefully calculate it from the pre-update state + the increment.
-                // For now, assuming student.feeDetails are from the pre-update student object:
                 feesPaid: student.feeDetails.feesPaid + parseFloat(amountPaid),
                 remainingBalance: student.feeDetails.remainingBalance - parseFloat(amountPaid),
                 currentTotalFee: currentTotalFee
             }
         });
-
     } catch (error) {
-        // Only attempt to abort if the session is active (not yet committed or already aborted)
-        if (session.inTransaction()) { // Check if the session is still in a transaction state
+        if (session.inTransaction()) { 
             await session.abortTransaction();
         }
         console.error('Error recording payment:', error);
         res.status(500).json({ message: 'Server error recording payment.', error: error.message, details: error });
     } finally {
-        // Ensure session is always ended, regardless of success or failure
         session.endSession();
     }
 };
@@ -274,7 +254,6 @@ exports.getPaymentsByStudent = async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
 };
-
 
 
 exports.generateReceipt = async (req, res) => {

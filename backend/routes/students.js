@@ -1,22 +1,6 @@
-// const express = require('express');
-// const router = express.Router();
-// const studentsController = require('../controllers/studentsController');
-// const paymentsController = require('../controllers/paymentsController');
-
-
-// router.post('/register', studentsController.registerStudent);
-// router.get('/', studentsController.getAllStudents);
-// router.get('/:admissionNumber', studentsController.getStudentByAdmission);
-// router.get('/outstandingByClass', paymentsController.getOutstandingFeesByClass);
-// router.get('/totalOutstanding',paymentsController.getTotalOutstandingFees);
-// router.get('/byStudent/:admissionNumber', paymentsController.getPaymentsByStudent);
-
-
-// module.exports = router;
-
-
-// routes/studentRoutes.js
 const express = require('express');
+const router = express.Router();
+
 const {
   registerStudent,
   getAllStudents,
@@ -25,16 +9,14 @@ const {
   updateStudent,
   deleteStudent,
   getStudentProfile
-} = require('../controllers/studentsController'); // Ensure this path is correct
+} = require('../controllers/studentsController');
 
-const router = express.Router();
-
-router.post('/register', registerStudent); // To add a new student
-router.get('/', getAllStudents); // To get all students
-router.get('/:admissionNumber', getStudentByAdmission); // To get a single student's details
-router.get('/:admissionNumber/fees', getStudentFees); // To get a single student's calculated fees
-router.put('/:admissionNumber', updateStudent); // To update a student's details
-router.delete('/:admissionNumber', deleteStudent); // To delete a student
+router.post('/register', registerStudent); 
+router.get('/', getAllStudents); 
+router.get('/:admissionNumber', getStudentByAdmission); 
+router.get('/:admissionNumber/fees', getStudentFees); 
+router.put('/:admissionNumber', updateStudent);
+router.delete('/:admissionNumber', deleteStudent);
 router.get('/:admissionNumber/profile', getStudentProfile);
 
 module.exports = router;

@@ -15,17 +15,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system'; // Import for file system operations
-import * as IntentLauncher from 'expo-intent-launcher'; // Import for Android to open PDF
-import * as WebBrowser from 'expo-web-browser'; // Import for iOS to open PDF
+import * as FileSystem from 'expo-file-system'; 
+import * as IntentLauncher from 'expo-intent-launcher'; 
+import * as WebBrowser from 'expo-web-browser'; 
 import * as Sharing from 'expo-sharing';
 
-const BASE_URL = 'http://10.71.114.108:3000/api'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api';
 
 export default function StudentProfileScreen() {
   const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [studentProfile, setStudentProfile] = useState(null); // Will hold ALL student data
+  const [studentProfile, setStudentProfile] = useState(null);
 
   const handleLookupProfile = async () => {
     if (!lookupAdmissionNumber) {
@@ -34,10 +34,10 @@ export default function StudentProfileScreen() {
     }
 
     setLoading(true);
-    setStudentProfile(null); // Clear previous details
+    setStudentProfile(null);
 
     try {
-      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); // Existing API endpoint
+      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); 
       setStudentProfile(response.data);
     } catch (error) {
       console.error('Error fetching student profile:', error.response?.data || error.message);
@@ -48,84 +48,43 @@ export default function StudentProfileScreen() {
     }
   };
 
-  // --- NEW FUNCTION: Handle receipt generation and download ---
- 
-//  const handleGenerateReceipt = async (paymentId, transactionReference) => {
-//     try {
-//       Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
-//       const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
-//       const fileName = `receipt_${transactionReference || paymentId}.pdf`;
-//       const downloadPath = FileSystem.documentDirectory + fileName;
-
-//       const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
-//         headers: {
-//           'Content-Type': 'application/pdf', // Ensure the server sends this header
-//         },
-//       });
-
-//       Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
-
-//       // Open the downloaded PDF based on platform
-//       if (Platform.OS === 'ios') {
-//         await WebBrowser.openBrowserAsync(uri); // iOS can open local files in browser
-//       } else {
-//         // Android requires IntentLauncher
-//         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-//           data: uri,
-//           flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-//           type: 'application/pdf',
-//         });
-//       }
-//     } catch (error) {
-//       console.error('Error downloading/generating receipt:', error.response?.data || error.message);
-//       Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
-//     }
-//   };
-
   const handleGenerateReceipt = async (paymentId, transactionReference) => {
-        try {
-            Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
-            const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
-            const fileName = `receipt_${transactionReference || paymentId}.pdf`;
-            const downloadPath = FileSystem.documentDirectory + fileName;
+    try {
+        Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
+        const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
+        const fileName = `receipt_${transactionReference || paymentId}.pdf`;
+        const downloadPath = FileSystem.documentDirectory + fileName;
 
-            const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
-                headers: {
-                    'Content-Type': 'application/pdf',
-                },
+        const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
+            headers: {
+                'Content-Type': 'application/pdf',
+            },
+        });
+
+        Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
+
+        if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(uri, {
+                mimeType: 'application/pdf',
+                UTI: 'com.adobe.pdf',
+                dialogTitle: 'Open Receipt',
             });
-
-            Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
-
-            // --- FIX HERE: Use Expo Sharing for cross-platform file opening ---
-            if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(uri, {
-                    mimeType: 'application/pdf',
-                    UTI: 'com.adobe.pdf', // iOS specific
-                    dialogTitle: 'Open Receipt',
-                });
+        } else {
+            if (Platform.OS === 'ios') {
+                await WebBrowser.openBrowserAsync(uri);
             } else {
-                // Fallback for older Expo versions or if sharing is not available (less common)
-                // This fallback might still face FileUriExposedException if not careful,
-                // but Expo should handle it usually.
-                if (Platform.OS === 'ios') {
-                    await WebBrowser.openBrowserAsync(uri);
-                } else {
-                    // For Android, if Sharing is not an option, you would need
-                    // to explicitly get a content URI using FileSystem.getContentUriAsync
-                    // before launching the intent.
-                    const contentUri = await FileSystem.getContentUriAsync(uri);
-                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-                        data: contentUri, // Use contentUri here
-                        flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-                        type: 'application/pdf',
-                    });
-                }
+                const contentUri = await FileSystem.getContentUriAsync(uri);
+                await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                    data: contentUri,
+                    flags: 1,
+                    type: 'application/pdf',
+                });
             }
-        } catch (error) {
-            console.error('Error downloading/generating receipt:', error.response?.data || error.message || error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
         }
+    } catch (error) {
+        console.error('Error downloading/generating receipt:', error.response?.data || error.message || error);
+        Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
+    }
     };
   return (
     <LinearGradient colors={['#F0F8F6', '#E8F5E9']} style={styles.gradient}>
@@ -170,7 +129,6 @@ export default function StudentProfileScreen() {
 
             {studentProfile && (
               <View style={styles.profileCard}>
-                {/* Student Core Details */}
                 <Text style={styles.sectionTitle}>
                   <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Information
                 </Text>
@@ -190,7 +148,7 @@ export default function StudentProfileScreen() {
                   <Text style={styles.detailLabel}>Boarding Status:</Text>
                   <Text style={styles.detailValue}>{studentProfile.student.boardingStatus}</Text>
                 </View>
-                {studentProfile.student.gender && ( // Conditionally render gender if available
+                {studentProfile.student.gender && ( 
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Gender:</Text>
                     <Text style={styles.detailValue}>{studentProfile.student.gender}</Text>
@@ -275,7 +233,7 @@ export default function StudentProfileScreen() {
                             {payment.transactionReference && (
                               <Text style={styles.paymentReference}>Ref: {payment.transactionReference}</Text>
                             )}
-                            {/* --- NEW: Generate Receipt Button --- */}
+
                             <TouchableOpacity
                               style={styles.generateReceiptButton}
                               onPress={() => handleGenerateReceipt(payment._id, payment.transactionReference)}
@@ -329,7 +287,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#1B5E20', 
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -352,12 +310,11 @@ const styles = StyleSheet.create({
       },
     }),
     borderWidth: 1,
-    borderColor: '#C8E6C9', // Secondary Green for border
   },
   lookupCardTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary Green
+    color: '#388E3C', 
     marginBottom: 20,
     textAlign: 'center',
     paddingBottom: 10,
@@ -370,10 +327,10 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: '#A5D6A7', // Secondary Green for input border
+    borderColor: '#A5D6A7', 
     borderRadius: 10,
     marginBottom: 15,
-    backgroundColor: '#F8F8F8', // Neutral
+    backgroundColor: '#F8F8F8', 
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -391,18 +348,18 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 55, // Consistent height
+    height: 55, 
     fontSize: 16,
     color: '#333',
   },
   button: {
-    backgroundColor: '#4CAF50', // Secondary Green for the button
+    backgroundColor: '#4CAF50', 
     padding: 18,
     borderRadius: 10,
     width: '100%',
     alignItems: 'center',
     marginTop: 10,
-    flexDirection: 'row', // For icon and text
+    flexDirection: 'row', 
     justifyContent: 'center',
     ...Platform.select({
       ios: {
@@ -427,7 +384,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF', // Neutral
+    backgroundColor: '#FFFFFF', 
     borderRadius: 15,
     padding: 20,
     marginTop: 20,
@@ -443,12 +400,12 @@ const styles = StyleSheet.create({
       },
     }),
     borderWidth: 1,
-    borderColor: '#A5D6A7', // Secondary Green for border
+    borderColor: '#A5D6A7', 
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#1B5E20', 
     marginBottom: 15,
     textAlign: 'center',
     flexDirection: 'row',
@@ -464,24 +421,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 3,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F8F6', // Very light green line
+    borderBottomColor: '#F0F8F6', 
   },
   detailLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: '#555',
-    flex: 1, // Allows it to take up space and push value to right
+    flex: 1, 
   },
   detailValue: {
     fontSize: 16,
     color: '#333',
-    flex: 2, // Allows it to take up more space
+    flex: 2,
     textAlign: 'right',
   },
-  // Fee Details specific styles
   feeItemsContainer: {
     marginTop: 10,
-    // No top border here, as sectionTitle has one
   },
   feeItem: {
     flexDirection: 'row',
@@ -499,7 +454,7 @@ const styles = StyleSheet.create({
   feeItemAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary Green for amounts
+    color: '#388E3C', 
   },
   summaryRow: {
     flexDirection: 'row',
@@ -520,23 +475,23 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
   },
   paidRow: {
-    borderTopWidth: 0, // No border for paid
+    borderTopWidth: 0, 
   },
   balanceRow: {
-    borderTopWidth: 2, // Thicker border for balance
-    borderTopColor: '#1B5E20', // Primary green for balance emphasis
+    borderTopWidth: 2, 
+    borderTopColor: '#1B5E20', 
     paddingTop: 15,
     marginTop: 15,
   },
   summaryValuePaid: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary green for paid amount
+    color: '#388E3C',
   },
   summaryValueBalance: {
-    fontSize: 20, // Larger for balance
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#D32F2F', // Red for remaining balance (or another contrasting color)
+    color: '#D32F2F', 
   },
   feeNotes: {
     fontSize: 13,
@@ -559,7 +514,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   paymentItem: {
-    backgroundColor: '#F8F8F8', // Lighter background for history items
+    backgroundColor: '#F8F8F8',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,

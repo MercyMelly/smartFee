@@ -4,14 +4,12 @@ exports.getFeeStructure = async (req, res) => {
   try {
     const { gradeLevel, boardingStatus, hasTransport, transportRoute } = req.query;
 
-    // --- 1. Input Validation ---
     if (!gradeLevel || !boardingStatus || typeof hasTransport === 'undefined') {
       return res.status(400).json({
         message: 'Missing required query parameters: gradeLevel, boardingStatus, and hasTransport are all required.',
       });
     }
 
-    // Normalize values
     const normalizedBoardingStatus =
       boardingStatus.charAt(0).toUpperCase() + boardingStatus.slice(1).toLowerCase();
 
@@ -35,14 +33,13 @@ exports.getFeeStructure = async (req, res) => {
       });
     }
 
-    // --- 2. Query the Database ---
     const query = {
       gradeLevel,
       boardingStatus: normalizedBoardingStatus,
       hasTransport: parsedHasTransport,
     };
 
-    const feeRecord = await FeeStructure.findOne(query).lean(); // returns plain JS object
+    const feeRecord = await FeeStructure.findOne(query).lean(); 
 
     if (!feeRecord) {
       return res.status(404).json({
@@ -51,9 +48,8 @@ exports.getFeeStructure = async (req, res) => {
       });
     }
 
-    // --- 3. Transport Fee Handling ---
     let finalTotal = feeRecord.totalCalculated;
-    const termlyComponents = [...feeRecord.termlyComponents]; // safe copy
+    const termlyComponents = [...feeRecord.termlyComponents]; 
 
     if (parsedHasTransport) {
       if (!feeRecord.transportRoutes || Object.keys(feeRecord.transportRoutes).length === 0) {
@@ -97,7 +93,6 @@ exports.getFeeStructure = async (req, res) => {
       }
     }
 
-    // --- 4. Return Final Response ---
     res.json({
       ...feeRecord,
       termlyComponents,

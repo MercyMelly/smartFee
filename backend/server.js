@@ -10,7 +10,7 @@ connectDB();
 
 const app = express();
 
-app.use(express.json({ extended: false })); // Allows us to get data in req.body
+app.use(express.json({ extended: false }));
 
 
 app.use(cors());

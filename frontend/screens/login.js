@@ -21,7 +21,6 @@ export default function Login({ navigation }) {
   const [secureText, setSecureText] = useState(true);
   const login = useAuthStore((state) => state.login);
   const handleLogin = async (values, { setSubmitting }) => {
-    
     try {
       const res = await axios.post('http://10.71.114.108:3000/api/login', values);
       const { token, role,user } = res.data;

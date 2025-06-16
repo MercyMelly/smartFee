@@ -1,5 +1,3 @@
-// studentsDB.js (Updated Schema)
-
 const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
@@ -58,26 +56,18 @@ const studentSchema = new mongoose.Schema({
         trim: true,
         default: '',
     },
-    // --- CRITICAL ADDITION: The feeDetails sub-document ---
     feeDetails: {
         feesPaid: {
             type: Number,
-            default: 0 // Ensures 'feesPaid' is always a number, defaults to 0
+            default: 0 
         },
         remainingBalance: {
             type: Number,
-            default: 0 // Ensures 'remainingBalance' is always a number, defaults to 0
+            default: 0 
         },
         // You might consider adding a 'totalFeeExpected' here for better tracking
         // totalFeeExpected: { type: Number, default: 0 }
     },
-    // --- You had 'totalFees' and 'balance' at the top level.
-    // If 'feeDetails.remainingBalance' is now your primary balance,
-    // you might remove the top-level 'balance' to avoid redundancy and potential confusion.
-    // However, if your aggregations still rely on a top-level 'balance',
-    // ensure you update both, or update your aggregations to use 'feeDetails.remainingBalance'.
-    // For simplicity, I'm assuming 'feeDetails.remainingBalance' replaces the top-level 'balance'.
-    // If you need 'totalFees' for anything else, keep it.
 }, {
     timestamps: true
 });

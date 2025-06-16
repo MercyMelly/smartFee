@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import {View,Text,TextInput,TouchableOpacity,StyleSheet,Alert,ScrollView,ActivityIndicator,KeyboardAvoidingView,Platform,} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';

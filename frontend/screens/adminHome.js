@@ -1,4 +1,3 @@
-// AdminHome.js
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
@@ -6,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthStore } from '../store/authStore'; // <--- Import your auth store
+import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = 'http://10.71.114.108:3000/api';
 
@@ -14,7 +13,7 @@ export const AdminHome = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
-  const { clearAuth } = useAuthStore(); // <--- Get the clearAuth action from your store
+  const { clearAuth } = useAuthStore(); 
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -23,11 +22,9 @@ export const AdminHome = () => {
     return 'Good evening';
   };
 
-  // The logout function should just clear the auth state
   const logout = async () => {
     console.log('User logged out.');
-    await clearAuth(); // Call the clearAuth function from your store
-    // No navigation.replace('login') here! The App.js conditional rendering handles it.
+    await clearAuth(); 
   };
 
   const handleLogout = () => {
@@ -86,7 +83,6 @@ export const AdminHome = () => {
             </View>
           ) : (
             <View style={styles.cardContainer}>
-              {/* Cards ... */}
               <View style={[styles.card, { backgroundColor: '#4CAF50' }]}>
                 <Icon name="account-group" size={30} color="#fff" style={styles.cardIcon} />
                 <Text style={styles.cardLabel}>Total Students</Text>

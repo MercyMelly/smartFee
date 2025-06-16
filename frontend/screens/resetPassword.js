@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View,Text, TextInput,TouchableOpacity,StyleSheet, Alert, ActivityIndicator} from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '../store/authStore';
@@ -20,7 +12,7 @@ export default function ResetPassword({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const token = useAuthStore((state) => state.token);
-
+  
   const handleReset = async () => {
     if (!newPassword || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');

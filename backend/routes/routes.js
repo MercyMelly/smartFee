@@ -2,12 +2,10 @@ const express = require('express');
 require('../models/user'); 
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-// const bcrypt = require('bcryptjs'); // Uncomment if you want to use bcrypt for password hashing
+// const bcrypt = require('bcryptjs'); 
 const router = express.Router();
 const User = mongoose.model('userInfo');
-
 const JWT_SECRET = process.env.JWT_SECRET 
-// || 'mytempsecretkey'; 
 
 
 router.post('/signup', async (req, res) => {
@@ -32,8 +30,6 @@ router.post('/signup', async (req, res) => {
     res.send({ status: "error", data: err.message });
   }
 });
-
-
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;

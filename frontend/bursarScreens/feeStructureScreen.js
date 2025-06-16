@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import {View,Text,TouchableOpacity,StyleSheet,ScrollView,ActivityIndicator,Alert,} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -79,16 +71,12 @@ export default function FeeStructure() {
 
     setLoading(true);
     setCurrentFeeStructure(null); 
-
     try {
       const params = {
         gradeLevel: selectedGrade,
         boardingStatus: selectedBoardingStatus,
-        // hasTransport should be true only if BoardingStatus is 'Day'
         hasTransport: selectedBoardingStatus === 'Day',
       };
-
-      // Only add transportRoute if a route is explicitly selected AND it's a Day scholar
       if (selectedTransportRoute && selectedBoardingStatus === 'Day') {
         params.transportRoute = selectedTransportRoute;
       }
@@ -100,15 +88,10 @@ export default function FeeStructure() {
         setAvailableRoutes(['', ...Object.keys(feeData.transportRoutes).sort()]);
       } else {
         setAvailableRoutes([]);
-        // If boarding status changed to not 'Day', or no transport routes available,
-        // ensure selectedTransportRoute is reset
-        if (selectedTransportRoute !== '') { // Only reset if it's currently set
+        if (selectedTransportRoute !== '') { 
             setSelectedTransportRoute('');
         }
       }
-
-      // Set the fee structure. The backend's 'message' and 'availableRoutes'
-      // are handled by the backend's response logic, which is good.
       setCurrentFeeStructure(feeData);
 
     } catch (error) {
@@ -147,7 +130,6 @@ export default function FeeStructure() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>School Fee Structure</Text>
 
-          {/* Grade Level Picker */}
           <Text style={styles.label}>Select Grade Level:</Text>
           <View style={styles.pickerContainer}>
             <Picker
@@ -162,7 +144,6 @@ export default function FeeStructure() {
             </Picker>
           </View>
 
-          {/* Boarding Status Picker */}
           <Text style={styles.label}>Select Boarding Status:</Text>
           <View style={styles.pickerContainer}>
             <Picker
@@ -176,7 +157,6 @@ export default function FeeStructure() {
             </Picker>
           </View>
 
-          {/* Transport Route Picker (Conditionally Rendered) */}
           {selectedBoardingStatus === 'Day' && availableRoutes.length > 0 && (
             <>
               <Text style={styles.label}>Select Transport Route (Optional):</Text>
@@ -214,18 +194,16 @@ export default function FeeStructure() {
                   <Text style={styles.totalFeeText}>Total Termly Fee:</Text>
                   <Text style={styles.totalFeeAmount}>KSh {currentFeeStructure.finalTotal ? currentFeeStructure.finalTotal.toLocaleString() : currentFeeStructure.totalCalculated.toLocaleString()}</Text>
                 </View>
-                {currentFeeStructure.notes && ( // Display notes if present in the fetched data
+                {currentFeeStructure.notes && (
                   <Text style={styles.feeNotes}>* {currentFeeStructure.notes}</Text>
                 )}
               </View>
             )
           )}
 
-          {/* Payment Methods Section */}
           <View style={styles.paymentMethodsSection}>
             <Text style={styles.sectionTitle}>Payment Methods</Text>
 
-            {/* M-Pesa */}
             <View style={styles.paymentMethodCard}>
               <Text style={styles.paymentMethodTitle}>1. M-Pesa</Text>
               <Text style={styles.paymentDetail}>Paybill Number: {MPESA_DETAILS.paybillNumber}</Text>
@@ -233,7 +211,6 @@ export default function FeeStructure() {
               <Text style={styles.paymentNotes}>{MPESA_DETAILS.notes}</Text>
             </View>
 
-            {/* Bank Transfer */}
             <View style={styles.paymentMethodCard}>
               <Text style={styles.paymentMethodTitle}>2. Bank Transfer</Text>
               <Text style={styles.paymentDetail}>Bank Name: {SCHOOL_BANK_DETAILS.bankName}</Text>
@@ -246,7 +223,6 @@ export default function FeeStructure() {
               <Text style={styles.paymentNotes}>{SCHOOL_BANK_DETAILS.notes}</Text>
             </View>
 
-            {/* In-Kind Payments */}
             <View style={styles.paymentMethodCard}>
               <Text style={styles.paymentMethodTitle}>3. In-Kind Payments (Goods)</Text>
               <Text style={styles.paymentDetail}>We accept payments in the form of:</Text>

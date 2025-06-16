@@ -16,12 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 
-const BASE_URL = 'http://10.71.114.108:3000/api'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api'; 
 
 export default function StudentProfileScreen() {
   const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [studentProfile, setStudentProfile] = useState(null); // Will hold ALL student data
+  const [studentProfile, setStudentProfile] = useState(null);
 
   const handleLookupProfile = async () => {
     if (!lookupAdmissionNumber) {
@@ -30,48 +30,10 @@ export default function StudentProfileScreen() {
     }
 
     setLoading(true);
-    setStudentProfile(null); // Clear previous details
+    setStudentProfile(null); 
 
-    try {
-      // THIS IS A CRITICAL ENDPOINT:
-      // Your backend needs to provide ALL student profile data, including:
-      // student basic info, parent info, fee structure, fees paid, remaining balance, and payment history.
-      // Example expected backend response structure:
-      // {
-      //   student: {
-      //     fullName: string,
-      //     admissionNumber: string,
-      //     gradeLevel: string,
-      //     boardingStatus: string,
-      //     gender: string, // Assuming you add gender to student enrollment
-      //     hasTransport: boolean,
-      //     transportRoute: string,
-      //     parent: {
-      //       name: string,
-      //       phone: string,
-      //       email: string,
-      //       address: string,
-      //     }
-      //   },
-      //   feeDetails: { // This would be the calculated fees based on current term/student type
-      //     termlyComponents: [{ name: string, amount: number }],
-      //     totalTermlyFee: number,
-      //     feesPaid: number, // New: Total amount paid so far for the current term
-      //     remainingBalance: number, // New: TotalTermlyFee - FeesPaid
-      //     notes: string,
-      //   },
-      //   paymentHistory: [ // New: Array of past payments
-      //     {
-      //       paymentId: string,
-      //       date: string,
-      //       amount: number,
-      //       method: string,
-      //       // ... other payment details
-      //     }
-      //   ]
-      // }
-      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); // New API endpoint
-
+    try {     
+      const response = await axios.get(`${BASE_URL}/students/${lookupAdmissionNumber}/profile`); 
       setStudentProfile(response.data);
     } catch (error) {
       console.error('Error fetching student profile:', error.response?.data || error.message);
@@ -125,7 +87,6 @@ export default function StudentProfileScreen() {
 
             {studentProfile && (
               <View style={styles.profileCard}>
-                {/* Student Core Details */}
                 <Text style={styles.sectionTitle}>
                   <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Information
                 </Text>
@@ -145,7 +106,7 @@ export default function StudentProfileScreen() {
                   <Text style={styles.detailLabel}>Boarding Status:</Text>
                   <Text style={styles.detailValue}>{studentProfile.student.boardingStatus}</Text>
                 </View>
-                {studentProfile.student.gender && ( // Conditionally render gender if available
+                {studentProfile.student.gender && ( 
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Gender:</Text>
                     <Text style={styles.detailValue}>{studentProfile.student.gender}</Text>
@@ -158,7 +119,6 @@ export default function StudentProfileScreen() {
                   </View>
                 )}
 
-                {/* Parent/Guardian Details */}
                 <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
                   <Ionicons name="people-outline" size={24} color="#388E3C" /> Parent/Guardian
                 </Text>
@@ -183,7 +143,6 @@ export default function StudentProfileScreen() {
                   </View>
                 )}
 
-                {/* Fee Details */}
                 <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
                   <Ionicons name="cash-outline" size={24} color="#388E3C" /> Fee Statement (Current Term)
                 </Text>
@@ -215,7 +174,6 @@ export default function StudentProfileScreen() {
                   </Text>
                 )}
 
-                {/* Payment History (Optional Section) */}
                 {studentProfile.paymentHistory && studentProfile.paymentHistory.length > 0 && (
                   <>
                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
@@ -272,7 +230,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#1B5E20', 
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -295,12 +253,12 @@ const styles = StyleSheet.create({
       },
     }),
     borderWidth: 1,
-    borderColor: '#C8E6C9', // Secondary Green for border
+    borderColor: '#C8E6C9',
   },
   lookupCardTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary Green
+    color: '#388E3C', 
     marginBottom: 20,
     textAlign: 'center',
     paddingBottom: 10,
@@ -313,10 +271,10 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: '#A5D6A7', // Secondary Green for input border
+    borderColor: '#A5D6A7', 
     borderRadius: 10,
     marginBottom: 15,
-    backgroundColor: '#F8F8F8', // Neutral
+    backgroundColor: '#F8F8F8',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -334,18 +292,18 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 55, // Consistent height
+    height: 55,
     fontSize: 16,
     color: '#333',
   },
   button: {
-    backgroundColor: '#4CAF50', // Secondary Green for the button
+    backgroundColor: '#4CAF50', 
     padding: 18,
     borderRadius: 10,
     width: '100%',
     alignItems: 'center',
     marginTop: 10,
-    flexDirection: 'row', // For icon and text
+    flexDirection: 'row', 
     justifyContent: 'center',
     ...Platform.select({
       ios: {
@@ -370,7 +328,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF', // Neutral
+    backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 20,
     marginTop: 20,
@@ -386,12 +344,12 @@ const styles = StyleSheet.create({
       },
     }),
     borderWidth: 1,
-    borderColor: '#A5D6A7', // Secondary Green for border
+    borderColor: '#A5D6A7',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#1B5E20', 
     marginBottom: 15,
     textAlign: 'center',
     flexDirection: 'row',
@@ -407,24 +365,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 3,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F8F6', // Very light green line
+    borderBottomColor: '#F0F8F6',
   },
   detailLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: '#555',
-    flex: 1, // Allows it to take up space and push value to right
+    flex: 1,
   },
   detailValue: {
     fontSize: 16,
     color: '#333',
-    flex: 2, // Allows it to take up more space
+    flex: 2, 
     textAlign: 'right',
   },
-  // Fee Details specific styles
   feeItemsContainer: {
     marginTop: 10,
-    // No top border here, as sectionTitle has one
   },
   feeItem: {
     flexDirection: 'row',
@@ -442,7 +398,7 @@ const styles = StyleSheet.create({
   feeItemAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary Green for amounts
+    color: '#388E3C', 
   },
   summaryRow: {
     flexDirection: 'row',
@@ -463,23 +419,23 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
   },
   paidRow: {
-    borderTopWidth: 0, // No border for paid
+    borderTopWidth: 0,
   },
   balanceRow: {
-    borderTopWidth: 2, // Thicker border for balance
-    borderTopColor: '#1B5E20', // Primary green for balance emphasis
+    borderTopWidth: 2, 
+    borderTopColor: '#1B5E20', 
     paddingTop: 15,
     marginTop: 15,
   },
   summaryValuePaid: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#388E3C', // Secondary green for paid amount
+    color: '#388E3C',
   },
   summaryValueBalance: {
-    fontSize: 20, // Larger for balance
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#D32F2F', // Red for remaining balance (or another contrasting color)
+    color: '#D32F2F',
   },
   feeNotes: {
     fontSize: 13,
@@ -502,7 +458,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   paymentItem: {
-    backgroundColor: '#F8F8F8', // Lighter background for history items
+    backgroundColor: '#F8F8F8', 
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,

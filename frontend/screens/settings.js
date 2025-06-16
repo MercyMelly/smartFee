@@ -29,7 +29,7 @@ const SettingsScreen = () => {
 
   const handleResetPassword = () => {
     navigation.navigate('resetPassword');
-    // navigation.navigate('resetPassword', { token: 'your-token-here' }); 
+    //navigation.navigate('resetPassword', { 'token': token }); 
   };
 
   return (

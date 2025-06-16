@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuthStore } from './store/authStore';
 
-// Public Screens
+// Shared Screens
 import LandingPage from './screens/landingpage';
 import Login from './screens/login';
 import Signup from './screens/signup';
@@ -29,7 +29,6 @@ import StudentProfile from './bursarScreens/studentProfile';
 import SettingsScreen from './screens/settings';
 import FeeStructure from './bursarScreens/feeStructureScreen';
 import StudentProfileScreen from './bursarScreens/feesLook'; 
-
 
 
 const Stack = createStackNavigator();

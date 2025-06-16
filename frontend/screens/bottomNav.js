@@ -3,7 +3,6 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 
-
 const BottomNav = () => {
   const navigation = useNavigation();
  
@@ -22,7 +21,6 @@ const BottomNav = () => {
         <Icon name="scale-balance" size={28} color="#777" />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('settings')}>
-        {/* <Icon name="cog-outline" size={28} color="#777" /> */}
         <Icon name="cog-outline" size={28} color="#2e7d32" />
       </TouchableOpacity>
     </View>

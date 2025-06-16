@@ -17,19 +17,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const BASE_URL = 'http://10.71.114.108:3000/api'; // Your backend API base URL
+const BASE_URL = 'http://10.71.114.108:3000/api'; 
 
 export default function AddStudent({ navigation }) {
-  // Student State
   const [fullName, setFullName] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
-  const [gender, setGender] = useState(''); // <--- ADDED THIS LINE
+  const [gender, setGender] = useState(''); 
   const [boardingStatus, setBoardingStatus] = useState('');
   const [hasTransport, setHasTransport] = useState(false);
   const [transportRoute, setTransportRoute] = useState('');
 
-  // Parent State
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
   const [parentEmail, setParentEmail] = useState('');
@@ -53,14 +51,12 @@ export default function AddStudent({ navigation }) {
     if (!boardingStatus) {
       setBoardingStatus('Day');
     }
-    // Initialize gender if it's not set
     if (!gender) {
-        setGender(''); // Default to empty string for "Select Gender" option
+        setGender(''); 
     }
   }, []);
 
   const handleAddStudent = async () => {
-    // Ensure gender is included in the validation check for required fields
     if (!fullName || !admissionNumber || !gradeLevel || !gender || !boardingStatus || !parentName || !parentPhone) {
       Alert.alert('Missing Information', 'Please fill in all *required* fields for student and parent (marked with *).');
       return;
@@ -72,7 +68,7 @@ export default function AddStudent({ navigation }) {
         fullName,
         admissionNumber,
         gradeLevel,
-        gender, // Now `gender` is properly defined
+        gender,
         boardingStatus,
         hasTransport: boardingStatus === 'Day' ? hasTransport : false,
         transportRoute: (boardingStatus === 'Day' && hasTransport) ? transportRoute : '',
@@ -85,11 +81,10 @@ export default function AddStudent({ navigation }) {
       const response = await axios.post(`${BASE_URL}/students/register`, studentData);
 
       Alert.alert('Success', `Student ${response.data.student.fullName} added successfully!`);
-      // Reset form fields, including gender
       setFullName('');
       setAdmissionNumber('');
       setGradeLevel(ALL_VALID_GRADES[1]);
-      setGender(''); // Reset gender state
+      setGender(''); 
       setBoardingStatus('Day');
       setHasTransport(false);
       setTransportRoute('');
@@ -116,7 +111,6 @@ export default function AddStudent({ navigation }) {
           <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Enroll New Student</Text>
 
-            {/* Student Information Section */}
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>
                 <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Details
@@ -223,7 +217,6 @@ export default function AddStudent({ navigation }) {
               )}
             </View>
 
-            {/* Parent Information Section */}
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>
                 <Ionicons name="people-outline" size={24} color="#388E3C" /> Parent/Guardian Details
@@ -299,14 +292,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#1B5E20', // Primary Green
+    color: '#1B5E20', 
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   sectionCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF', // Neutral
+    backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 20,
     marginBottom: 25,
@@ -322,7 +315,7 @@ const styles = StyleSheet.create({
       },
     }),
     borderWidth: 1,
-    borderColor: '#C8E6C9', // Secondary Green for border
+    borderColor: '#C8E6C9', 
   },
   sectionTitle: {
     fontSize: 22,
@@ -369,15 +362,15 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 8,
     fontSize: 16,
-    color: '#555', // Neutral dark grey
+    color: '#555', 
     fontWeight: '600',
   },
   pickerWrapper: {
     width: '100%',
-    borderColor: '#A5D6A7', // Secondary Green
+    borderColor: '#A5D6A7', 
     borderWidth: 1,
     borderRadius: 10,
-    backgroundColor: '#F8F8F8', // Neutral
+    backgroundColor: '#F8F8F8', 
     marginBottom: 15,
     overflow: 'hidden',
     height: 55,
@@ -397,10 +390,10 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     height: 55,
-    color: '#333', // Neutral dark grey
+    color: '#333', 
   },
   button: {
-    backgroundColor: '#4CAF50', // Secondary Green for the button
+    backgroundColor: '#4CAF50', 
     padding: 18,
     borderRadius: 10,
     width: '100%',
@@ -419,7 +412,7 @@ const styles = StyleSheet.create({
     }),
   },
   buttonText: {
-    color: '#fff', // White text on button
+    color: '#fff', 
     fontSize: 20,
     fontWeight: 'bold',
     letterSpacing: 0.5,
