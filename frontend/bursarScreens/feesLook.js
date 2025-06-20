@@ -20,7 +20,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as WebBrowser from 'expo-web-browser'; 
 import * as Sharing from 'expo-sharing';
 
-const BASE_URL = 'http://10.71.114.108:3000/api';
+const BASE_URL = 'https://300b-2c0f-fe38-2405-29ac-4d1a-39c4-f7e-d4b8.ngrok-free.app/api';
 
 export default function StudentProfileScreen() {
   const [lookupAdmissionNumber, setLookupAdmissionNumber] = useState('');
