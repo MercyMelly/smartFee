@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,31 @@ import {
   StyleSheet,
   Alert,
   Platform,
-  TextInput, // Added for search bar
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
+import axios from 'axios';
+
+// IMPORTANT: Replace with your active ngrok HTTPS URL during development,
+// or your actual production backend domain.
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Make sure this is updated!
 
 const BursarDashboard = () => {
   const navigation = useNavigation();
+  const { token, logout } = useAuthStore();
+  // Initialize with correct keys or ensure they are always present
   const [stats, setStats] = useState({ collected: 0, expected: 0, outstanding: 0 });
-  const [searchQuery, setSearchQuery] = useState(''); // State for search input
-  const logout = useAuthStore((state) => state.logout);
+  const [pendingCount, setPendingCount] = useState(0); // New state for pending count
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
+  const [loadingPending, setLoadingPending] = useState(true); // New loading state for pending count
+  const [refreshing, setRefreshing] = useState(false); // New state for pull-to-refresh
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -42,16 +54,112 @@ const BursarDashboard = () => {
     ]);
   };
 
-  useEffect(() => {
-    // In a real app, you'd fetch this data from your backend
-    // For now, static data to illustrate the dashboard
-    setStats({ collected: 254000, expected: 400000, outstanding: 146000 });
-  }, []);
+  // Function to fetch fee summary statistics
+  const fetchFeeSummary = useCallback(async () => {
+    if (!token) {
+      console.warn('[BursarHome] No token found for fee summary fetch.');
+      setLoadingStats(false);
+      return;
+    }
+    try {
+      const config = {
+        headers: { 'x-auth-token': token },
+        timeout: 15000, // Add timeout for safety
+      };
+      const response = await axios.get(`${BASE_URL}/dashboard/summary`, config);
+      // >>>>>>> FIX HERE: Map backend keys to frontend state keys <<<<<<<
+      setStats({
+          collected: response.data.totalFeesCollected || 0,
+          expected: response.data.totalExpectedFees || 0,
+          outstanding: response.data.totalOutstanding || 0,
+      });
+      console.log("[BursarHome] Fetched Fee Summary Data:", response.data);
+    } catch (error) {
+      console.error('[BursarHome] Error fetching fee summary:');
+      if (error.response) {
+          console.error("  Status:", error.response.status);
+          console.error("  Data:", error.response.data);
+      } else if (error.request) {
+          console.error("  No response received. Request:", error.request);
+      } else {
+          console.error("  Error message:", error.message);
+      }
+      Alert.alert('Error', error.response?.data?.message || 'Failed to load fee summary.');
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        logout(); // Logout if unauthorized
+      }
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [token, logout]);
 
-  const StatCard = ({ icon, title, value, gradientColors }) => (
+  // Function to fetch pending payments count
+  const fetchPendingCount = useCallback(async () => {
+    if (!token) {
+      console.warn('[BursarHome] No token found for pending count fetch.');
+      setLoadingPending(false);
+      return;
+    }
+    try {
+      const config = {
+        headers: { 'x-auth-token': token },
+        timeout: 15000, // Add timeout for safety
+      };
+      const response = await axios.get(`${BASE_URL}/webhooks/pending/count`, config);
+      setPendingCount(response.data.count);
+      console.log("[BursarHome] Fetched Pending Count:", response.data.count);
+    } catch (error) {
+      console.error('[BursarHome] Error fetching pending payments count:', error.response?.data || error.message);
+      // Optionally alert user or handle error display
+    } finally {
+      setLoadingPending(false);
+    }
+  }, [token]);
+
+
+  // Combine fetching for both stats and pending count
+  const fetchData = useCallback(async () => {
+    setRefreshing(true);
+    setLoadingStats(true);
+    setLoadingPending(true);
+    // Use Promise.allSettled to ensure both complete, even if one fails
+    await Promise.allSettled([
+      fetchFeeSummary(),
+      fetchPendingCount()
+    ]);
+    setRefreshing(false);
+  }, [fetchFeeSummary, fetchPendingCount]);
+
+  // Fetch data when the component mounts and when the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+
+  const onRefresh = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Robust formatCurrency function
+  const formatCurrency = (amount) => {
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount)) {
+      console.warn(`[BursarHome] formatCurrency received non-numeric value: ${amount}`);
+      return 'KES 0'; // Fallback for non-numeric input
+    }
+    return `KES ${numericAmount.toLocaleString('en-US')}`;
+  };
+
+  // StatCard component (added defensive rendering)
+  const StatCard = ({ icon, title, value, gradientColors, isLoading }) => (
     <LinearGradient colors={gradientColors} style={styles.statCard}>
       <Icon name={icon} size={30} color="#fff" style={styles.statIcon} />
-      <Text style={styles.statValue}>KES {value.toLocaleString()}</Text>
+      {isLoading ? ( // Show activity indicator if loading
+        <ActivityIndicator size="small" color="#fff" />
+      ) : (
+        <Text style={styles.statValue}>{formatCurrency(value)}</Text> // Use formatCurrency
+      )}
       <Text style={styles.statTitle}>{title}</Text>
     </LinearGradient>
   );
@@ -67,9 +175,8 @@ const BursarDashboard = () => {
 
   const handleSearch = () => {
     if (searchQuery.trim() !== '') {
-      // Implement actual search logic here, e.g., navigate to student profile
       navigation.navigate('studentProfile', { admissionNumber: searchQuery.trim() });
-      setSearchQuery(''); // Clear search after initiating
+      setSearchQuery('');
     } else {
       Alert.alert('Search', 'Please enter an admission number to search.');
     }
@@ -77,7 +184,12 @@ const BursarDashboard = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4CAF50']} />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.greetingText}>{getGreeting()}, Bursar</Text>
@@ -105,26 +217,29 @@ const BursarDashboard = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Fee Summary Section - Re-introducing as it's crucial */}
+        {/* Fee Summary Section */}
         <Text style={styles.sectionHeader}>Fee Summary</Text>
         <View style={styles.statsRow}>
           <StatCard
             icon="cash-multiple"
             title="Collected"
-            value={stats.collected}
-            gradientColors={['#4CAF50', '#2E7D32']} // Green
+            value={stats.collected} // Now correctly mapped from backend's totalFeesCollected
+            gradientColors={['#4CAF50', '#2E7D32']}
+            isLoading={loadingStats}
           />
           <StatCard
             icon="bank-check"
             title="Expected"
-            value={stats.expected}
-            gradientColors={['#2196F3', '#1976D2']} // Blue
+            value={stats.expected} // Now correctly mapped from backend's totalExpectedFees
+            gradientColors={['#2196F3', '#1976D2']}
+            isLoading={loadingStats}
           />
           <StatCard
             icon="cash-remove"
             title="Outstanding"
-            value={stats.outstanding}
-            gradientColors={['#FF5722', '#E64A19']} // Orange/Red
+            value={stats.outstanding} // Now correctly mapped from backend's totalOutstanding
+            gradientColors={['#FF5722', '#E64A19']}
+            isLoading={loadingStats}
           />
         </View>
 
@@ -133,27 +248,33 @@ const BursarDashboard = () => {
         <View style={styles.quickActionsGrid}>
           <ActionButton icon="account-plus" label="Add Student" onPress={() => navigation.navigate('addStudent')} />
           <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
-          <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produceValuation')} /> {/* Changed route name */}
+          <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produceValuation')} />
           <ActionButton icon="receipt" label="Generate Receipt" onPress={() => navigation.navigate('generateReceipt')} />
         </View>
 
-        {/* Placeholder for "Pending Actions" or "Recent Activities" */}
+        {/* Dynamic Pending Actions Section */}
         <Text style={styles.sectionHeader}>Pending Actions</Text>
         <View style={styles.infoCard}>
           <Icon name="bell-outline" size={28} color="#FFC107" style={{ marginBottom: 10 }} />
-          <Text style={styles.infoCardText}>
-            You have 3 M-Pesa payments awaiting confirmation.
-          </Text>
-          <Text style={styles.infoCardText}>
-            2 Bank transfers need verification.
-          </Text>
-          {/* FIX: Changed 'pendingPayments' to 'PendingPaymentsTab' */}
+          {loadingPending ? (
+            <ActivityIndicator size="small" color="#FFC107" style={{ marginBottom: 10 }} />
+          ) : (
+            <>
+              <Text style={styles.infoCardText}>
+                You have {pendingCount} payments awaiting confirmation.
+              </Text>
+              {pendingCount > 0 && (
+                <Text style={styles.infoCardTextSmall}>
+                  (Review and confirm M-Pesa/Bank payments)
+                </Text>
+              )}
+            </>
+          )}
           <TouchableOpacity onPress={() => navigation.navigate('PendingPaymentsTab')} style={styles.infoCardButton}>
             <Text style={styles.infoCardButtonText}>View All Pending</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-      {/* Bottom navigation is now handled by BursarTabNavigator.js */}
     </SafeAreaView>
   );
 };
@@ -208,7 +329,6 @@ const styles = StyleSheet.create({
     marginTop: 25,
     marginBottom: 15,
   },
-  // --- Search Bar Styles ---
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,7 +369,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  // --- Stat Card Styles (Restored) ---
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -290,7 +409,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
   },
-  // --- Quick Actions Styles ---
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -330,7 +448,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
-  // --- Info Card (for Pending Actions) ---
   infoCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
@@ -358,7 +475,7 @@ const styles = StyleSheet.create({
   },
   infoCardButton: {
     marginTop: 15,
-    backgroundColor: '#FFC107', // A warning/attention color
+    backgroundColor: '#FFC107',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -367,7 +484,12 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: 'bold',
   },
-  // Removed bottomNav styles as it's global
+  infoCardTextSmall: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 5,
+  },
 });
 
 export default BursarDashboard;

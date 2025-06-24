@@ -53,7 +53,7 @@
 //         password,
 //         role,
 //       };
-//       const res = await axios.post('https://300b-2c0f-fe38-2405-29ac-4d1a-39c4-f7e-d4b8.ngrok-free.app/api/signup', userData)
+//       const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/signup', userData)
 //       {console.log(res.data)};
 //         Alert.alert('User created successfully', 'You can now login with your credentials',[
 //         {
@@ -273,7 +273,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore'; // Assuming this path is correct
 
 // IMPORTANT: Ensure this IP address is correct and accessible from your device!
-const BASE_URL = 'https://300b-2c0f-fe38-2405-29ac-4d1a-39c4-f7e-d4b8.ngrok-free.app/api'; // Use the IP from your Login.js/AdminHome.js
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Use the IP from your Login.js/AdminHome.js
 
 const UserSignupSchema = Yup.object().shape({
     fullName: Yup.string()

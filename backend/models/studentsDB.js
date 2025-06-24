@@ -75,6 +75,8 @@
 // module.exports = mongoose.model('Student', studentSchema);
 
 
+
+
 const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
@@ -94,6 +96,7 @@ const studentSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
+        index: true, // Add index for query performance
     },
     gender: {
         type: String,
@@ -104,17 +107,20 @@ const studentSchema = new mongoose.Schema({
         type: String,
         enum: ['Day', 'Boarding'],
         required: true,
+        index: true, // Add index for query performance
     },
     hasTransport: {
         type: Boolean,
         required: true,
         default: false,
+        index: true, // Add index for query performance
     },
     transportRoute: {
         type: String,
         trim: true,
         default: '', // Default to empty string if no transport
-        required: function() { return this.hasTransport === true; } // Required if hasTransport is true
+        required: function() { return this.hasTransport === true; }, // Required if hasTransport is true
+        index: true, // Add index for query performance
     },
     parentName: {
         type: String,
@@ -143,15 +149,22 @@ const studentSchema = new mongoose.Schema({
         feesPaid: {
             type: Number,
             default: 0,
-            min: 0
+            min: 0,
+            index: true, // Add index for aggregation/query performance
         },
         remainingBalance: {
             type: Number,
             default: 0,
-            min: 0 // Balance shouldn't be negative, though it could temporarily go negative if overpaid
+            // min: 0 // Removed min:0 to allow negative values for overpayment, as seen in your logs (-33500)
+            index: true, // Add index for aggregation/query performance
         },
-        // Consider adding a `totalExpectedFee` here as well, calculated by class/term
-        // totalExpectedFee: { type: Number, default: 0, min: 0 }
+        // >>>>> FIX: UNCOMMENT AND DEFINE totalFees HERE <<<<<
+        totalFees: { // This will store the total expected fees for the student (based on current fee structure)
+            type: Number,
+            default: 0,
+            min: 0,
+            index: true, // Crucial index for the dashboard summary query
+        }
     },
 }, {
     timestamps: true // Adds createdAt and updatedAt

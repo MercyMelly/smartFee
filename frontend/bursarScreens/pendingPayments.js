@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore'; // Adjust path to your auth store
 
-const BASE_URL = 'https://300b-2c0f-fe38-2405-29ac-4d1a-39c4-f7e-d4b8.ngrok-free.app/api'; // *** IMPORTANT: Replace with your actual backend IP or domain ***
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // *** IMPORTANT: Replace with your actual backend IP or domain ***
 
 export default function PendingPaymentsScreen() {
     const { token } = useAuthStore(); // Get auth token from your global store

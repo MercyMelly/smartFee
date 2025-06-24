@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const BASE_URL = 'https://300b-2c0f-fe38-2405-29ac-4d1a-39c4-f7e-d4b8.ngrok-free.app/api'; 
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; 
 
 const IN_KIND_ITEM_VALUES = {
   'Maize (90kg bag)': 4000,
