@@ -2,64 +2,90 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
+    ScrollView,
     StyleSheet,
     Alert,
-    ActivityIndicator,
-    KeyboardAvoidingView,
     Platform,
-    FlatList,
+    ActivityIndicator,
+    TextInput,
+    FlatList, // Added FlatList for displaying the student list
+    KeyboardAvoidingView, // Added for keyboard handling
+    Linking
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Icon from 'react-native-vector-icons/FontAwesome'; // For the plus icon
+import { useAuthStore } from '../store/authStore'; // Adjusted path to authStore
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as WebBrowser from 'expo-web-browser';
-import * as Sharing from 'expo-sharing';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons'; // For icons like search, school, people, cash, time
 
-// Define your API base URL
-// IMPORTANT: Ensure this IP address is correct and accessible from your device!
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api';
+// Expo FileSystem, Sharing, and WebBrowser for PDF handling
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
+import * as IntentLauncher from 'expo-intent-launcher';
+import { Buffer } from 'buffer'; // For handling binary data in PDF generation
+
+
+// IMPORTANT: Replace with your active ngrok HTTPS URL during development,
+// or your actual production backend domain.
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Ensure this matches your backend
 
 export default function StudentOverview() {
     const navigation = useNavigation();
+    const { token, logout } = useAuthStore();
 
     // State for search and loading
-    const [searchQuery, setSearchQuery] = useState(''); // Unified search input
+    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
 
     // State for student data (all students and current profile)
     const [allStudents, setAllStudents] = useState([]);
     const [filteredStudents, setFilteredStudents] = useState([]);
-    const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
+    const [currentStudentProfile, setCurrentStudentProfile] = useState(null); // This holds the detailed profile
 
     // Fetch all students on component mount and when the screen is focused
     const fetchAllStudents = useCallback(async () => {
         setLoading(true);
+        if (!token) {
+            Alert.alert('Authentication Error', 'No token found. Please log in again.');
+            logout();
+            setLoading(false);
+            return;
+        }
         try {
-            const res = await fetch(`${BASE_URL}/students`);
-            const data = await res.json();
-            setAllStudents(data);
-            setFilteredStudents(data); // Initially, filtered list is all students
+            const config = {
+                headers: {
+                    'x-auth-token': token,
+                },
+            };
+            const res = await axios.get(`${BASE_URL}/students`, config);
+            setAllStudents(res.data);
+            setFilteredStudents(res.data); // Initialize filtered list with all students
         } catch (err) {
-            console.error('Error fetching all students:', err);
-            Alert.alert('Error', 'Failed to load student list. Please check your network and server.');
+            console.error('Error fetching all students:', err.response?.data || err.message);
+            Alert.alert('Error', err.response?.data?.message || 'Failed to load student list. Please check your network and server.');
+            if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+                    { text: 'OK', onPress: logout }
+                ]);
+            }
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [token, logout]);
 
     // Effect to refetch data and reset state when the screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            setCurrentStudentProfile(null); // Clear any displayed profile
-            setSearchQuery(''); // Clear search input
-            fetchAllStudents(); // Fetch the latest student list
+            setCurrentStudentProfile(null); // Clear detailed profile when screen is focused
+            setSearchQuery(''); // Clear search query
+            fetchAllStudents(); // Fetch the full list again
+            return () => {
+                // Optional cleanup
+            };
         }, [fetchAllStudents])
     );
 
@@ -67,71 +93,102 @@ export default function StudentOverview() {
     const handleSearch = (text) => {
         setSearchQuery(text);
         if (!text) {
-            setFilteredStudents(allStudents); // If search is empty, show all students
+            setFilteredStudents(allStudents); // If search query is empty, show all students
             return;
         }
         const lowerCaseText = text.toLowerCase();
         const filteredData = allStudents.filter(s =>
-            (s.fullName && s.fullName.toLowerCase().includes(lowerCaseText)) || // Corrected: use fullName
+            (s.fullName && s.fullName.toLowerCase().includes(lowerCaseText)) ||
             (s.admissionNumber && s.admissionNumber.toLowerCase().includes(lowerCaseText))
         );
         setFilteredStudents(filteredData);
     };
 
     // Handle navigation/profile load from a student list item click
-    const handleSelectStudentFromList = async (admissionNumber) => {
+    const handleSelectStudentFromList = useCallback(async (admissionNumber) => {
         if (!admissionNumber) {
             Alert.alert('Error', 'Student admission number is missing.');
             return;
         }
+        if (!token) {
+            Alert.alert('Authentication Error', 'No token found. Please log in again.');
+            logout();
+            return;
+        }
+
         setLoading(true);
-        setCurrentStudentProfile(null); // Clear previous profile
+        setCurrentStudentProfile(null); // Clear previous profile before loading new one
 
         try {
-            // Use admissionNumber for profile lookup, as per your backend routes
-            const response = await axios.get(`${BASE_URL}/students/${admissionNumber}/profile`);
-            setCurrentStudentProfile(response.data);
-            setSearchQuery(''); // Clear search input when a profile is found
-            setFilteredStudents([]); // Hide the list once a profile is selected
+            const config = {
+                headers: {
+                    'x-auth-token': token,
+                },
+            };
+            const response = await axios.get(`${BASE_URL}/students/${admissionNumber}/profile`, config);
+            setCurrentStudentProfile(response.data); // Set the detailed profile
+            setSearchQuery(''); // Clear search query after successfully loading profile
+            setFilteredStudents([]); // Clear filtered list to show only the selected profile
         } catch (error) {
             console.error('Error fetching student profile from list:', error.response?.data || error.message);
             const errorMessage = error.response?.data?.message || 'Failed to fetch student profile. Please try again.';
             Alert.alert('Error', errorMessage);
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+                    { text: 'OK', onPress: logout }
+                ]);
+            }
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, logout]);
 
-    // Generate Receipt functionality (unchanged)
+
+    // Generate Receipt functionality (Moved from studentProfile.js)
     const handleGenerateReceipt = async (paymentId, transactionReference) => {
+        if (!token) {
+            Alert.alert('Authentication Error', 'You are not logged in. Please log in to generate receipts.');
+            logout();
+            return;
+        }
+
         try {
             Alert.alert('Generating Receipt', 'Please wait while we prepare your receipt...');
             const url = `${BASE_URL}/payments/generate-receipt/${paymentId}`;
             const fileName = `receipt_${transactionReference || paymentId}.pdf`;
             const downloadPath = FileSystem.documentDirectory + fileName;
 
-            const { uri } = await FileSystem.downloadAsync(url, downloadPath, {
+            const config = {
                 headers: {
-                    'Content-Type': 'application/pdf',
+                    'x-auth-token': token,
                 },
-            });
+                responseType: 'arraybuffer', // Crucial for receiving binary data like PDF
+            };
 
-            Alert.alert('Receipt Downloaded!', `Receipt saved to: ${uri}`);
+            const response = await axios.get(url, config);
+
+            // Convert ArrayBuffer to Buffer, then to Base64
+            const pdfBase64 = Buffer.from(response.data, 'binary').toString('base64');
+
+            // Save the PDF to a local file
+            await FileSystem.writeAsStringAsync(downloadPath, pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
+
+            Alert.alert('Receipt Downloaded!', `Receipt saved to: ${downloadPath}`);
 
             if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(uri, {
+                await Sharing.shareAsync(downloadPath, {
                     mimeType: 'application/pdf',
-                    UTI: 'com.adobe.pdf',
+                    UTI: 'com.adobe.pdf', // iOS specific UTI for PDF
                     dialogTitle: 'Open Receipt',
                 });
             } else {
                 if (Platform.OS === 'ios') {
-                    await WebBrowser.openBrowserAsync(uri);
+                    await WebBrowser.openBrowserAsync(downloadPath);
                 } else {
-                    const contentUri = await FileSystem.getContentUriAsync(uri);
+                    const contentUri = await FileSystem.getContentUriAsync(downloadPath);
                     await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
                         data: contentUri,
-                        flags: 1,
+                        flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
                         type: 'application/pdf',
                     });
                 }
@@ -139,19 +196,25 @@ export default function StudentOverview() {
         } catch (error) {
             console.error('Error downloading/generating receipt:', error.response?.data || error.message || error);
             Alert.alert('Error', error.response?.data?.message || 'Failed to generate receipt. Please try again.');
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+                    { text: 'OK', onPress: logout }
+                ]);
+            }
         }
     };
+
 
     // Render item for the FlatList (All Students)
     const renderStudentListItem = ({ item }) => (
         <TouchableOpacity
             style={styles.listItemCard}
-            // Use item.admissionNumber as the unique key for lookup
             onPress={() => handleSelectStudentFromList(item.admissionNumber)}
         >
             <View style={styles.listItemDetails}>
-                <Text style={styles.listItemName}>{item.fullName || 'Name N/A'}</Text> {/* CORRECTED LINE */}
+                <Text style={styles.listItemName}>{item.fullName || 'Name N/A'}</Text>
                 <Text style={styles.listItemDetail}>Adm No: {item.admissionNumber || 'N/A'}</Text>
+                {item.gradeLevel && <Text style={styles.listItemDetail}>Grade: {item.gradeLevel}</Text>}
             </View>
             <Ionicons name="chevron-forward-outline" size={20} color="#757575" />
         </TouchableOpacity>
@@ -166,10 +229,10 @@ export default function StudentOverview() {
                 >
                     {/* Fixed Header Content (Title and Search) */}
                     <View style={styles.headerContainer}>
-                        <Text style={styles.mainTitle}>Student Profile</Text>
+                        <Text style={styles.mainTitle}>Student Information</Text>
 
                         {/* Unified Search Input for Name/Admission No */}
-                        {!currentStudentProfile && ( // Only show search if no profile is active
+                        {!currentStudentProfile && ( // Only show search if no detailed profile is active
                             <View style={styles.searchCard}>
                                 <View style={styles.inputContainer}>
                                     <Ionicons name="search-outline" size={20} color="#757575" style={styles.icon} />
@@ -179,7 +242,8 @@ export default function StudentOverview() {
                                         placeholderTextColor="#757575"
                                         value={searchQuery}
                                         onChangeText={handleSearch}
-                                        autoCapitalize="words" // Capitalize first letter of each word
+                                        autoCapitalize="words"
+                                        keyboardType="default" // Changed to default for names
                                     />
                                     {searchQuery.length > 0 && (
                                         <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearButton}>
@@ -191,25 +255,26 @@ export default function StudentOverview() {
                         )}
                     </View>
 
-                    {/* Conditional Content: Loading, Profile, No Results, or Student List */}
+                    {/* Conditional Content: Loading, Detailed Profile, No Results, or Student List */}
                     {loading && (
                         <ActivityIndicator size="large" color="#4CAF50" style={{ marginVertical: 20 }} />
                     )}
 
-                    {!loading && currentStudentProfile && (
-                        // Student Profile Display Section
-                        // Using FlatList for the profile to allow it to scroll if content is long
-                        <FlatList
-                            data={[currentStudentProfile]} // Wrap in array for FlatList
-                            keyExtractor={(item) => item.student?.admissionNumber?.toString() || item.student?._id?.toString() || 'profile-key'}
+                    {!loading && currentStudentProfile ? (
+                        // Display detailed student profile
+                        <FlatList // Using FlatList to handle potential scrolling within the profile details
+                            data={[currentStudentProfile]}
+                            keyExtractor={(item) => item.student?._id?.toString() || 'profile-key'}
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.profileListContent}
                             renderItem={({ item: profile }) => ( // Renamed item to profile for clarity
                                 <View style={styles.profileCard}>
+                                    {/* Button to close the detailed profile and go back to the list */}
                                     <TouchableOpacity onPress={() => setCurrentStudentProfile(null)} style={styles.closeProfileButton}>
                                         <Ionicons name="close-circle-outline" size={30} color="#D32F2F" />
                                     </TouchableOpacity>
 
+                                    {/* Student Information Section */}
                                     <Text style={styles.sectionTitle}>
                                         <Ionicons name="school-outline" size={24} color="#388E3C" /> Student Information
                                     </Text>
@@ -242,40 +307,52 @@ export default function StudentOverview() {
                                         </View>
                                     )}
 
+                                    {/* Parent/Guardian Section */}
                                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
                                         <Ionicons name="people-outline" size={24} color="#388E3C" /> Parent/Guardian
                                     </Text>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Name:</Text>
-                                        <Text style={styles.detailValue}>{profile.student?.parent?.name || 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Phone:</Text>
-                                        <Text style={styles.detailValue}>{profile.student?.parent?.phone || 'N/A'}</Text>
-                                    </View>
-                                    {profile.student?.parent?.email && (
-                                        <View style={styles.detailRow}>
-                                            <Text style={styles.detailLabel}>Email:</Text>
-                                            <Text style={styles.detailValue}>{profile.student.parent.email}</Text>
-                                        </View>
-                                    )}
-                                    {profile.student?.parent?.address && (
-                                        <View style={styles.detailRow}>
-                                            <Text style={styles.detailLabel}>Address:</Text>
-                                            <Text style={styles.detailValue}>{profile.student.parent.address}</Text>
-                                        </View>
+                                    {profile.student?.parent ? (
+                                        <>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Name:</Text>
+                                                <Text style={styles.detailValue}>{profile.student.parent.name || 'N/A'}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Phone:</Text>
+                                                <Text style={styles.detailValue}>{profile.student.parent.phone || 'N/A'}</Text>
+                                            </View>
+                                            {profile.student.parent.email && (
+                                                <View style={styles.detailRow}>
+                                                    <Text style={styles.detailLabel}>Email:</Text>
+                                                    <Text style={styles.detailValue}>{profile.student.parent.email}</Text>
+                                                </View>
+                                            )}
+                                            {profile.student.parent.address && (
+                                                <View style={styles.detailRow}>
+                                                    <Text style={styles.detailLabel}>Address:</Text>
+                                                    <Text style={styles.detailValue}>{profile.student.parent.address}</Text>
+                                                </View>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <Text style={styles.noInfoText}>Parent/Guardian information not available.</Text>
                                     )}
 
+                                    {/* Fee Statement Section */}
                                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
                                         <Ionicons name="cash-outline" size={24} color="#388E3C" /> Fee Statement (Current Term)
                                     </Text>
                                     <View style={styles.feeItemsContainer}>
-                                        {profile.feeDetails?.termlyComponents && profile.feeDetails.termlyComponents.map((item, index) => (
-                                            <View key={index} style={styles.feeItem}>
-                                                <Text style={styles.feeItemName}>{item.name}:</Text>
-                                                <Text style={styles.feeItemAmount}>KSh {item.amount?.toLocaleString() || '0'}</Text>
-                                            </View>
-                                        ))}
+                                        {profile.feeDetails?.termlyComponents && profile.feeDetails.termlyComponents.length > 0 ? (
+                                            profile.feeDetails.termlyComponents.map((item, index) => (
+                                                <View key={index} style={styles.feeItem}>
+                                                    <Text style={styles.feeItemName}>{item.name}:</Text>
+                                                    <Text style={styles.feeItemAmount}>KSh {item.amount?.toLocaleString() || '0'}</Text>
+                                                </View>
+                                            ))
+                                        ) : (
+                                            <Text style={styles.noInfoText}>No fee components defined.</Text>
+                                        )}
                                     </View>
 
                                     <View style={styles.summaryRow}>
@@ -297,6 +374,7 @@ export default function StudentOverview() {
                                         </Text>
                                     )}
 
+                                    {/* Payment History Section with Generate Receipt button */}
                                     {profile.paymentHistory && profile.paymentHistory.length > 0 && (
                                         <>
                                             <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
@@ -304,10 +382,10 @@ export default function StudentOverview() {
                                             </Text>
                                             <View style={styles.paymentHistoryContainer}>
                                                 {profile.paymentHistory.map((payment, index) => (
-                                                    <View key={payment._id || index} style={styles.paymentItem}>
+                                                    <View key={index} style={styles.paymentItem}>
                                                         <View style={styles.paymentDetailsLeft}>
                                                             <Text style={styles.paymentDate}>{new Date(payment.paymentDate).toLocaleDateString()}</Text>
-                                                            <Text style={styles.paymentAmount}>KSh {payment.amountPaid?.toLocaleString() || '0'}</Text>
+                                                            <Text style={styles.paymentAmount}>KSh {payment.amountPaid.toLocaleString()}</Text>
                                                         </View>
                                                         <View style={styles.paymentDetailsRight}>
                                                             <Text style={styles.paymentMethod}>{payment.paymentMethod}</Text>
@@ -330,49 +408,41 @@ export default function StudentOverview() {
                                     {profile.paymentHistory && profile.paymentHistory.length === 0 && (
                                         <Text style={styles.noHistoryText}>No payment history recorded yet.</Text>
                                     )}
+
                                 </View>
                             )}
                         />
+                    ) : (
+                        // Display list of students if no detailed profile is active
+                        <>
+                            {!loading && filteredStudents.length > 0 && searchQuery.length > 0 && (
+                                <View style={styles.searchResultsInfo}>
+                                    <Text style={styles.searchResultsText}>Found {filteredStudents.length} matching students:</Text>
+                                </View>
+                            )}
+                            {!loading && filteredStudents.length === 0 && searchQuery.length > 0 && (
+                                <View style={styles.noResultsCard}>
+                                    <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
+                                    <Text style={styles.noResultsText}>No student found matching "{searchQuery}". Please verify.</Text>
+                                </View>
+                            )}
+                            {!loading && filteredStudents.length > 0 && ( // Show all students if no search query
+                                <FlatList
+                                    data={filteredStudents}
+                                    keyExtractor={(item) => item._id}
+                                    renderItem={renderStudentListItem}
+                                    contentContainerStyle={styles.listContainer}
+                                    showsVerticalScrollIndicator={false}
+                                />
+                            )}
+                             {!loading && allStudents.length === 0 && searchQuery.length === 0 && (
+                                <View style={styles.noResultsCard}>
+                                    <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
+                                    <Text style={styles.noResultsText}>No students recorded yet.</Text>
+                                </View>
+                            )}
+                        </>
                     )}
-
-                    {!loading && !currentStudentProfile && filteredStudents.length === 0 && searchQuery && (
-                        <View style={styles.noResultsCard}>
-                            <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
-                            <Text style={styles.noResultsText}>No students found matching "{searchQuery}".</Text>
-                        </View>
-                    )}
-
-                    {!loading && !currentStudentProfile && filteredStudents.length === 0 && !searchQuery && allStudents.length === 0 && (
-                        <View style={styles.noResultsCard}>
-                            <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
-                            <Text style={styles.noResultsText}>No students loaded. Check your server connection or add new students.</Text>
-                        </View>
-                    )}
-
-                    {/* All Students List Section (shown when no profile is displayed) */}
-                    {!loading && !currentStudentProfile && filteredStudents.length > 0 && (
-                        <View style={styles.listSection}>
-                            <View style={styles.listHeader}>
-                                <Text style={styles.cardTitle}>Student Directory</Text> {/* Changed back to Directory */}
-                                <TouchableOpacity onPress={() => navigation.navigate('addStudent')} style={styles.addButton}>
-                                    <Icon name="plus" size={20} color="#fff" />
-                                    <Text style={styles.addButtonText}>Add Student</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <FlatList
-                                data={filteredStudents}
-                                // The keyExtractor should use a unique and stable identifier.
-                                // Based on your backend, 'admissionNumber' is used for lookup.
-                                // Ensure it's present for every student item.
-                                keyExtractor={(item) => item.admissionNumber?.toString() || item._id?.toString() || Math.random().toString()}
-                                renderItem={renderStudentListItem}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.listContentContainer} // Added for padding/margin specific to the list
-                            />
-                        </View>
-                    )}
-
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </LinearGradient>
@@ -385,15 +455,18 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        backgroundColor: '#F0F8F6',
     },
     keyboardAvoidingView: {
         flex: 1,
     },
     headerContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 15,
         paddingHorizontal: 20,
-        paddingTop: 20,
-        backgroundColor: '#F0F8F6', // Match background gradient top color
-        // Add shadow/elevation to make it visually distinct if it's a fixed header
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        marginBottom: 10,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
@@ -407,19 +480,82 @@ const styles = StyleSheet.create({
         }),
     },
     mainTitle: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: 'bold',
         color: '#1B5E20',
-        marginBottom: 25,
+        marginBottom: 15,
         textAlign: 'center',
-        letterSpacing: 0.5,
     },
-    // --- Unified Search Card ---
     searchCard: {
-        width: '100%',
+        backgroundColor: '#F9F9F9',
+        borderRadius: 10,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    icon: {
+        marginRight: 10,
+    },
+    input: {
+        flex: 1,
+        height: 40,
+        fontSize: 16,
+        color: '#333',
+    },
+    clearButton: {
+        padding: 5,
+    },
+    listContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    listItemCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 15,
+        padding: 15,
+        marginBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
+    },
+    listItemDetails: {
+        flex: 1,
+    },
+    listItemName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1A5319',
+    },
+    listItemDetail: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
+    },
+    profileListContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    profileCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
         padding: 20,
+        marginTop: 10,
         marginBottom: 20,
         ...Platform.select({
             ios: {
@@ -432,152 +568,6 @@ const styles = StyleSheet.create({
                 elevation: 6,
             },
         }),
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#388E3C',
-        marginBottom: 15,
-        textAlign: 'center',
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8F5E9',
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%',
-        paddingHorizontal: 15,
-        borderWidth: 1,
-        borderColor: '#A5D6A7',
-        borderRadius: 10,
-        marginBottom: 15,
-        backgroundColor: '#F8F8F8',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
-            },
-            android: {
-                elevation: 2,
-            },
-        }),
-    },
-    icon: {
-        marginRight: 10,
-    },
-    input: {
-        flex: 1,
-        height: 50,
-        fontSize: 16,
-        color: '#333',
-    },
-    clearButton: {
-        padding: 5,
-    },
-
-    // --- All Students List Section ---
-    listSection: {
-        flex: 1, // Allow FlatList to take available space
-        width: '100%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 15,
-        padding: 20,
-        marginBottom: 20, // Add some bottom padding if needed
-        marginHorizontal: 20, // Match header horizontal padding
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 6,
-            },
-        }),
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-    listHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8F5E9',
-    },
-    addButton: {
-        backgroundColor: '#2e7d32',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-    },
-    addButtonText: {
-        color: '#fff',
-        marginLeft: 5,
-        fontWeight: 'bold',
-    },
-    listItemCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F9F9F9',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-        borderColor: '#ddd',
-        borderWidth: 1,
-    },
-    listItemDetails: {
-        flex: 1, // Take all available space
-    },
-    listItemName: {
-        fontSize: 17,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    listItemDetail: {
-        fontSize: 13,
-        color: '#555',
-    },
-    listContentContainer: {
-        paddingBottom: 20, // Add padding to the bottom of the list itself
-    },
-    // Removed listItemBalance, listItemBalanceLabel, listItemBalanceValue
-
-    // --- Student Profile Display Card ---
-    profileListContent: {
-        flexGrow: 1, // Allow content to grow and scroll
-        paddingBottom: 40, // Add padding at the bottom of the profile view
-        paddingHorizontal: 20, // Match the padding of the header container
-    },
-    profileCard: {
-        width: '100%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 15,
-        padding: 20,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 6,
-            },
-        }),
-        borderWidth: 1,
-        borderColor: '#A5D6A7',
-        position: 'relative',
     },
     closeProfileButton: {
         position: 'absolute',
@@ -589,121 +579,125 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#1B5E20',
-        marginBottom: 15,
-        textAlign: 'center',
+        color: '#388E3C',
+        marginTop: 10,
+        marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8F5E9',
     },
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 8,
-        paddingBottom: 3,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#F0F8F6',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
     },
     detailLabel: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 15,
+        fontWeight: '600',
         color: '#555',
         flex: 1,
     },
     detailValue: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#333',
-        flex: 2,
+        flex: 1.5,
         textAlign: 'right',
     },
+    noInfoText: {
+        fontSize: 14,
+        color: '#757575',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        paddingVertical: 10,
+    },
     feeItemsContainer: {
-        marginTop: 10,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 10,
+        backgroundColor: '#F9F9F9',
     },
     feeItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 10,
-        paddingBottom: 5,
+        paddingVertical: 5,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#F0F8F6',
+        borderBottomColor: '#EBEBEB',
     },
     feeItemName: {
-        fontSize: 16,
-        color: '#555',
-        flex: 1,
+        fontSize: 14,
+        color: '#444',
     },
     feeItemAmount: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
-        color: '#388E3C',
+        color: '#333',
     },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 10,
-        paddingTop: 10,
+        paddingVertical: 10,
+        marginTop: 5,
         borderTopWidth: 1,
-        borderTopColor: '#E8F5E9',
+        borderTopColor: '#E0E0E0',
     },
     summaryLabel: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#2e7d32',
+        color: '#333',
     },
     summaryValue: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#2e7d32',
+        color: '#333',
     },
     paidRow: {
-        borderTopWidth: 0,
+        borderTopWidth: 0, // No double border
     },
     balanceRow: {
-        borderTopWidth: 2,
-        borderTopColor: '#1B5E20',
-        paddingTop: 15,
-        marginTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: '#A5D6A7', // Greenish border for balance
     },
     summaryValuePaid: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#388E3C',
+        color: '#2E7D32', // Darker green for paid amount
     },
     summaryValueBalance: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#D32F2F',
+        color: '#D32F2F', // Red for remaining balance
     },
     feeNotes: {
         fontSize: 13,
         color: '#757575',
-        marginTop: 15,
         fontStyle: 'italic',
-        textAlign: 'center',
+        marginTop: 15,
+        paddingHorizontal: 5,
+        borderLeftWidth: 3,
+        borderLeftColor: '#A5D6A7',
+        paddingLeft: 10,
     },
     paymentHistoryContainer: {
         marginTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#E8F5E9',
-        paddingTop: 10,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 10,
+        padding: 10,
+        backgroundColor: '#F9F9F9',
     },
     paymentItem: {
-        backgroundColor: '#F8F8F8',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 8,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderWidth: 0.5,
-        borderColor: '#C8E6C9',
+        paddingVertical: 10,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#EBEBEB',
     },
     paymentDetailsLeft: {
         flex: 2,
-        alignItems: 'flex-start',
     },
     paymentDetailsRight: {
         flex: 1.5,
@@ -712,73 +706,81 @@ const styles = StyleSheet.create({
     paymentDate: {
         fontSize: 14,
         color: '#555',
+        fontWeight: '500',
     },
     paymentAmount: {
         fontSize: 15,
         fontWeight: 'bold',
-        color: '#388E3C',
+        color: '#2E7D32',
         marginTop: 2,
     },
     paymentMethod: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#757575',
         fontStyle: 'italic',
     },
     paymentReference: {
         fontSize: 12,
-        color: '#757575',
+        color: '#999',
         marginTop: 2,
     },
     generateReceiptButton: {
-        backgroundColor: '#0288D1',
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 5,
-        marginTop: 5,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: '#1976D2', // A blue for action
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        marginTop: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
     },
     generateReceiptButtonText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: 'bold',
         marginLeft: 5,
     },
-    noHistoryText: {
-        fontSize: 14,
-        color: '#757575',
-        marginTop: 10,
-        textAlign: 'center',
-        fontStyle: 'italic',
-    },
     noResultsCard: {
-        width: '100%',
         backgroundColor: '#FFFFFF',
         borderRadius: 15,
         padding: 20,
-        marginTop: 20, // Add top margin
+        marginHorizontal: 20,
+        marginTop: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#C8E6C9',
+        minHeight: 150,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
             },
             android: {
-                elevation: 6,
+                elevation: 4,
             },
         }),
-        marginHorizontal: 20, // Match padding
     },
     noResultsText: {
         fontSize: 16,
-        color: '#555',
-        marginTop: 10,
+        color: '#616161',
         textAlign: 'center',
+        marginTop: 10,
+    },
+    searchResultsInfo: {
+        marginHorizontal: 20,
+        marginBottom: 10,
+        marginTop: 10,
+        padding: 10,
+        backgroundColor: '#E8F5E9',
+        borderRadius: 10,
+    },
+    searchResultsText: {
+        fontSize: 14,
+        color: '#388E3C',
+        fontWeight: 'bold',
     },
 });

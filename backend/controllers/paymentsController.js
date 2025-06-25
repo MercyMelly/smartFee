@@ -1,8 +1,9 @@
-const mongoose = require('mongoose');
 const Payment = require('../models/paymentsDB');
 const Student = require('../models/studentsDB');
 const FeeStructure = require('../models/feeStructure');
 const { generateReceiptPdf } = require('../utils/receiptGen');
+const mongoose = require('mongoose'); // ADD THIS LINE
+
 
 exports.recordPayment = async (req, res) => {
     const {
@@ -15,6 +16,12 @@ exports.recordPayment = async (req, res) => {
         inKindQuantity,
         notes
     } = req.body;
+
+    // Ensure req.user exists (auth middleware should handle this before this point)
+    if (!req.user || !req.user.id) {
+        console.error("Auth user not found in req for recordPayment. Middleware issue?");
+        return res.status(401).json({ message: 'Authentication required: User not identified.' });
+    }
 
     if (!admissionNumber || !amountPaid || !paymentMethod) {
         return res.status(400).json({ message: 'Missing required payment details (admissionNumber, amountPaid, paymentMethod).' });
@@ -122,7 +129,8 @@ exports.recordPayment = async (req, res) => {
             payerName,
             inKindItemType: paymentMethod === 'In-Kind' ? inKindItemType : undefined,
             inKindQuantity: paymentMethod === 'In-Kind' ? parseFloat(inKindQuantity) : undefined,
-            notes
+            notes,
+            recordedBy: req.user.id, // <--- FIX: Added recordedBy here!
         });
 
         await newPayment.save({ session });
@@ -308,4 +316,3 @@ exports.generateReceipt = async (req, res) => {
         res.status(500).json({ message: 'Server error generating receipt.', error: error.message });
     }
 };
-

@@ -53,7 +53,8 @@ export const AdminHome = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const navigation = useNavigation();
-    const { token, logout: clearAuth } = useAuthStore();
+    const { token,user, logout: clearAuth } = useAuthStore();
+    
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -228,7 +229,7 @@ export const AdminHome = () => {
                     <View style={styles.headerContainer}>
                         <Icon name="school-outline" size={38} color="#1A5319" />
                         <View style={styles.headerTextContainer}>
-                            <Text style={styles.greetingText}>{getGreeting()}, Admin!</Text>
+                            <Text style={styles.greetingText}>{getGreeting()}, {user?.fullname||'Admin'}</Text>
                             <Text style={styles.currentDateText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
                         </View>
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -248,7 +249,6 @@ export const AdminHome = () => {
                                 <Text style={styles.totalExpectedLabel}>Total Expected Fees</Text>
                                 <Text style={styles.totalExpectedValue}>{formatCurrency(summary?.totalExpectedFees)}</Text>
                                 <Text style={styles.totalExpectedHint}>
-                                    (This figure is based on student fee assignments in your backend.)
                                 </Text>
                             </View>
 

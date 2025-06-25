@@ -7,9 +7,9 @@ import {
   StyleSheet,
   Alert,
   Platform,
-  TextInput,
   ActivityIndicator,
   RefreshControl,
+  TextInput, // Added TextInput for search bar
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -17,21 +17,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons'; // For the school icon
 
 // IMPORTANT: Replace with your active ngrok HTTPS URL during development,
 // or your actual production backend domain.
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Make sure this is updated!
+const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Ensure this matches your backend
 
 const BursarDashboard = () => {
   const navigation = useNavigation();
-  const { token, logout } = useAuthStore();
-  // Initialize with correct keys or ensure they are always present
+  const { token, logout, user } = useAuthStore(); // Get user info for greeting
   const [stats, setStats] = useState({ collected: 0, expected: 0, outstanding: 0 });
-  const [pendingCount, setPendingCount] = useState(0); // New state for pending count
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
-  const [loadingPending, setLoadingPending] = useState(true); // New loading state for pending count
-  const [refreshing, setRefreshing] = useState(false); // New state for pull-to-refresh
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // State for the search input
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -40,125 +38,73 @@ const BursarDashboard = () => {
     return 'Good evening';
   };
 
-  const handleLogout = () => {
-    Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
+  const handleLogout = useCallback(() => {
+    Alert.alert('Confirm Logout', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Logout',
+        text: 'Log out',
         style: 'destructive',
         onPress: async () => {
           await logout();
-          navigation.replace('login');
+          // The App.js structure should handle navigation back to login
         },
       },
     ]);
-  };
+  }, [logout]);
 
   // Function to fetch fee summary statistics
   const fetchFeeSummary = useCallback(async () => {
     if (!token) {
-      console.warn('[BursarHome] No token found for fee summary fetch.');
       setLoadingStats(false);
+      setRefreshing(false);
       return;
     }
     try {
       const config = {
         headers: { 'x-auth-token': token },
-        timeout: 15000, // Add timeout for safety
       };
       const response = await axios.get(`${BASE_URL}/dashboard/summary`, config);
-      // >>>>>>> FIX HERE: Map backend keys to frontend state keys <<<<<<<
+      // FIX: Map the incoming backend keys to the frontend state keys
       setStats({
-          collected: response.data.totalFeesCollected || 0,
-          expected: response.data.totalExpectedFees || 0,
-          outstanding: response.data.totalOutstanding || 0,
+        collected: response.data.totalFeesCollected || 0, // Backend sends totalFeesCollected
+        expected: response.data.totalExpectedFees || 0,   // Backend sends totalExpectedFees
+        outstanding: response.data.totalOutstanding || 0, // Backend sends totalOutstanding
       });
-      console.log("[BursarHome] Fetched Fee Summary Data:", response.data);
     } catch (error) {
-      console.error('[BursarHome] Error fetching fee summary:');
-      if (error.response) {
-          console.error("  Status:", error.response.status);
-          console.error("  Data:", error.response.data);
-      } else if (error.request) {
-          console.error("  No response received. Request:", error.request);
-      } else {
-          console.error("  Error message:", error.message);
-      }
-      Alert.alert('Error', error.response?.data?.message || 'Failed to load fee summary.');
+      console.error('Error fetching fee summary:', error.response?.data || error.message);
+      Alert.alert('Error', 'Failed to load fee summary. Please check your network and server.');
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        logout(); // Logout if unauthorized
+        Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+          { text: 'OK', onPress: logout }
+        ]);
       }
     } finally {
       setLoadingStats(false);
+      setRefreshing(false);
     }
   }, [token, logout]);
 
-  // Function to fetch pending payments count
-  const fetchPendingCount = useCallback(async () => {
-    if (!token) {
-      console.warn('[BursarHome] No token found for pending count fetch.');
-      setLoadingPending(false);
-      return;
-    }
-    try {
-      const config = {
-        headers: { 'x-auth-token': token },
-        timeout: 15000, // Add timeout for safety
-      };
-      const response = await axios.get(`${BASE_URL}/webhooks/pending/count`, config);
-      setPendingCount(response.data.count);
-      console.log("[BursarHome] Fetched Pending Count:", response.data.count);
-    } catch (error) {
-      console.error('[BursarHome] Error fetching pending payments count:', error.response?.data || error.message);
-      // Optionally alert user or handle error display
-    } finally {
-      setLoadingPending(false);
-    }
-  }, [token]);
-
-
-  // Combine fetching for both stats and pending count
-  const fetchData = useCallback(async () => {
-    setRefreshing(true);
-    setLoadingStats(true);
-    setLoadingPending(true);
-    // Use Promise.allSettled to ensure both complete, even if one fails
-    await Promise.allSettled([
-      fetchFeeSummary(),
-      fetchPendingCount()
-    ]);
-    setRefreshing(false);
-  }, [fetchFeeSummary, fetchPendingCount]);
-
-  // Fetch data when the component mounts and when the screen is focused
+  // Fetch stats when the component mounts and when the screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [fetchData])
+      setLoadingStats(true);
+      fetchFeeSummary();
+    }, [fetchFeeSummary])
   );
 
   const onRefresh = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    setRefreshing(true);
+    fetchFeeSummary();
+  }, [fetchFeeSummary]);
 
-  // Robust formatCurrency function
-  const formatCurrency = (amount) => {
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount)) {
-      console.warn(`[BursarHome] formatCurrency received non-numeric value: ${amount}`);
-      return 'KES 0'; // Fallback for non-numeric input
-    }
-    return `KES ${numericAmount.toLocaleString('en-US')}`;
-  };
-
-  // StatCard component (added defensive rendering)
-  const StatCard = ({ icon, title, value, gradientColors, isLoading }) => (
+  const StatCard = ({ icon, title, value, gradientColors }) => (
     <LinearGradient colors={gradientColors} style={styles.statCard}>
       <Icon name={icon} size={30} color="#fff" style={styles.statIcon} />
-      {isLoading ? ( // Show activity indicator if loading
+      {loadingStats ? (
         <ActivityIndicator size="small" color="#fff" />
       ) : (
-        <Text style={styles.statValue}>{formatCurrency(value)}</Text> // Use formatCurrency
+        // Value is already guaranteed to be a number (0 if undefined) by setStats
+        <Text style={styles.statValue}>KES {(value || 0).toLocaleString()}</Text>
       )}
       <Text style={styles.statTitle}>{title}</Text>
     </LinearGradient>
@@ -173,163 +119,188 @@ const BursarDashboard = () => {
     </TouchableOpacity>
   );
 
+  // New function to handle search from the search bar
   const handleSearch = () => {
     if (searchQuery.trim() !== '') {
-      navigation.navigate('studentProfile', { admissionNumber: searchQuery.trim() });
-      setSearchQuery('');
+      // Navigates to the StudentProfileScreen (the new consolidated screen)
+      navigation.navigate('studentOverview', { admissionNumber: searchQuery.trim() }); // Use 'studentProfile' as defined in App.js
+      setSearchQuery(''); // Clear the search query after navigation
     } else {
       Alert.alert('Search', 'Please enter an admission number to search.');
     }
   };
 
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4CAF50']} />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.greetingText}>{getGreeting()}, Bursar</Text>
-          <Text style={styles.dateText}>{new Date().toDateString()}</Text>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Icon name="logout" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
+    <LinearGradient colors={['#F0F8F6', '#E8F5E9']} style={styles.gradient}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.scrollViewContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4CAF50']} />
+          }
+        >
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.topBar}>
+              {/* Logo */}
+              <View style={styles.logoContainer}>
+                <Ionicons name="school" size={30} color="#1B5E20" />
+                <Text style={styles.logoText}>Tindiret EMS</Text>
+              </View>
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Icon name="logout" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Icon name="magnify" size={24} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search student by admission number"
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            keyboardType="numeric"
-            returnKeyType="search"
-            onSubmitEditing={handleSearch}
-          />
-          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
-            <Text style={styles.searchButtonText}>Search</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.greetingText}>{getGreeting()}, {user?.fullName || 'Bursar'}</Text>
+            <Text style={styles.dateText}>{new Date().toDateString()}</Text>
+          </View>
 
-        {/* Fee Summary Section */}
-        <Text style={styles.sectionHeader}>Fee Summary</Text>
-        <View style={styles.statsRow}>
-          <StatCard
-            icon="cash-multiple"
-            title="Collected"
-            value={stats.collected} // Now correctly mapped from backend's totalFeesCollected
-            gradientColors={['#4CAF50', '#2E7D32']}
-            isLoading={loadingStats}
-          />
-          <StatCard
-            icon="bank-check"
-            title="Expected"
-            value={stats.expected} // Now correctly mapped from backend's totalExpectedFees
-            gradientColors={['#2196F3', '#1976D2']}
-            isLoading={loadingStats}
-          />
-          <StatCard
-            icon="cash-remove"
-            title="Outstanding"
-            value={stats.outstanding} // Now correctly mapped from backend's totalOutstanding
-            gradientColors={['#FF5722', '#E64A19']}
-            isLoading={loadingStats}
-          />
-        </View>
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Icon name="magnify" size={24} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search student by admission number"
+              placeholderTextColor="#757575"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              keyboardType="numeric"
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
+            />
+            <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+              <Text style={styles.searchButtonText}>Search</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Quick Actions Section */}
-        <Text style={styles.sectionHeader}>Quick Actions</Text>
-        <View style={styles.quickActionsGrid}>
-          <ActionButton icon="account-plus" label="Add Student" onPress={() => navigation.navigate('addStudent')} />
-          <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
-          <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produceValuation')} />
-          <ActionButton icon="receipt" label="Generate Receipt" onPress={() => navigation.navigate('generateReceipt')} />
-        </View>
 
-        {/* Dynamic Pending Actions Section */}
-        <Text style={styles.sectionHeader}>Pending Actions</Text>
-        <View style={styles.infoCard}>
-          <Icon name="bell-outline" size={28} color="#FFC107" style={{ marginBottom: 10 }} />
-          {loadingPending ? (
-            <ActivityIndicator size="small" color="#FFC107" style={{ marginBottom: 10 }} />
-          ) : (
-            <>
-              <Text style={styles.infoCardText}>
-                You have {pendingCount} payments awaiting confirmation.
-              </Text>
-              {pendingCount > 0 && (
-                <Text style={styles.infoCardTextSmall}>
-                  (Review and confirm M-Pesa/Bank payments)
-                </Text>
-              )}
-            </>
-          )}
-          <TouchableOpacity onPress={() => navigation.navigate('PendingPaymentsTab')} style={styles.infoCardButton}>
-            <Text style={styles.infoCardButtonText}>View All Pending</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Fee Summary Section */}
+          <Text style={styles.sectionHeader}>Fee Summary</Text>
+          <View style={styles.statsRow}>
+            <StatCard
+              icon="cash-multiple"
+              title="Collected"
+              value={stats.collected}
+              gradientColors={['#4CAF50', '#2E7D32']}
+            />
+            <StatCard
+              icon="bank-check"
+              title="Expected"
+              value={stats.expected}
+              gradientColors={['#2196F3', '#1976D2']}
+            />
+            <StatCard
+              icon="cash-remove"
+              title="Outstanding"
+              value={stats.outstanding}
+              gradientColors={['#FF5722', '#E64A19']}
+            />
+          </View>
+
+          {/* Quick Actions Section */}
+          <Text style={styles.sectionHeader}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <ActionButton icon="account-plus" label="Add Student" onPress={() => navigation.navigate('addStudent')} />
+            <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
+            <ActionButton icon="file-tree" label="Fee Structure" onPress={() => navigation.navigate('FeeStructureTab')} />
+            <ActionButton icon="alert-circle" label="Pending Payments" onPress={() => navigation.navigate('PendingPaymentsTab')} />
+            <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produce')} />
+            {/* Removed the 'Generate Receipt' button as it's now handled within StudentProfileScreen */}
+          </View>
+
+          {/* Placeholder for "Recent Activities" or "Alerts" - optional */}
+          {/* <Text style={styles.sectionHeader}>Recent Activities</Text>
+          <View style={styles.infoCard}>
+            <Icon name="clock-outline" size={28} color="#616161" style={{ marginBottom: 10 }} />
+            <Text style={styles.infoCardText}>
+              Latest payment recorded for Jane Doe - KES 5,000.
+            </Text>
+            <Text style={styles.infoCardText}>
+              New student John Smith added.
+            </Text>
+          </View> */}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
   },
   scrollViewContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  header: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    marginBottom: 15,
+  headerContainer: {
+    paddingHorizontal: 0, // No extra padding here as it's within scrollViewContent's 20px
+    paddingTop: 20,
+    backgroundColor: '#F0F8F6',
+    paddingBottom: 15,
+    borderRadius: 15, // Rounded corners for the entire header section
+    marginBottom: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 5,
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
       },
       android: {
-        elevation: 5,
+        elevation: 4,
       },
     }),
   },
-  greetingText: {
-    fontSize: 26,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 20, // Add padding here
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoText: {
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#1A5319',
+    color: '#1B5E20',
+    marginLeft: 8,
+  },
+  greetingText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1B5E20',
     marginBottom: 5,
+    paddingHorizontal: 20, // Add padding here
   },
   dateText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: '#616161',
+    marginBottom: 15,
+    paddingHorizontal: 20, // Add padding here
   },
   logoutButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    padding: 8,
+    padding: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 20,
   },
   sectionHeader: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1A5319',
-    marginHorizontal: 20,
     marginTop: 25,
     marginBottom: 15,
   },
-  searchContainer: {
+  searchContainer: { // Styles for the search bar
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -372,12 +343,12 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: 15,
+    flexWrap: 'wrap',
     marginBottom: 20,
+    gap: 10,
   },
   statCard: {
-    flex: 1,
-    marginHorizontal: 5,
+    width: '30%',
     padding: 15,
     borderRadius: 15,
     alignItems: 'center',
@@ -399,27 +370,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
     marginBottom: 4,
+    textAlign: 'center',
   },
   statTitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     textAlign: 'center',
+    fontWeight: '500',
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    marginHorizontal: 15,
+    justifyContent: 'space-between',
     marginTop: 10,
+    gap: 10,
   },
   actionCard: {
-    width: '46%',
-    aspectRatio: 1,
-    margin: '2%',
+    width: '48%',
+    aspectRatio: 1.2,
     borderRadius: 15,
     overflow: 'hidden',
     ...Platform.select({
@@ -447,48 +419,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
     textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 20,
-    marginHorizontal: 20,
-    marginTop: 20,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  infoCardText: {
-    fontSize: 15,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  infoCardButton: {
-    marginTop: 15,
-    backgroundColor: '#FFC107',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  infoCardButtonText: {
-    color: '#333',
-    fontWeight: 'bold',
-  },
-  infoCardTextSmall: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 5,
   },
 });
 

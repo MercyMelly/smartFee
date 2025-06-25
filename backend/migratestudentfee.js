@@ -1,34 +1,50 @@
-
 const mongoose = require('mongoose');
-const Student = require('./models/studentsDB');
-const dotenv = require('dotenv');
+require('dotenv').config(); // Load environment variables
+const Student = require('./models/studentsDB'); // Adjust path if necessary (e.g., ./models/student)
 
-dotenv.config();
-const mongoURI = process.env.MONGO_URI ; 
+const MONGODB_URI = process.env.MONGO_URI; // Ensure this is set in your .env file
 
-async function runMigration() {
-    try {
-        await mongoose.connect(mongoURI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
-        console.log('MongoDB Connected for feeDetails migration.');
-        const result = await Student.updateMany(
-            { 'feeDetails': { $exists: false } }, 
-            {
-                $set: {
-                    'feeDetails.feesPaid': 0,      
-                    'feeDetails.remainingBalance': 0 
-                }
-            }
-        );
-
-        console.log(`Migration complete: Matched ${result.matchedCount} students, modified ${result.modifiedCount}.`);
-        mongoose.disconnect();
-    } catch (error) {
-        console.error('Migration failed:', error);
-        mongoose.disconnect();
+const migrateGender = async () => {
+    if (!MONGODB_URI) {
+        console.error("MONGO_URI is not defined in .env file. Please set it.");
+        process.exit(1);
     }
-}
 
-runMigration();
+    try {
+        await mongoose.connect(MONGODB_URI, {
+            // useNewUrlParser: true, // Deprecated in recent Mongoose versions
+            // useUnifiedTopology: true, // Deprecated in recent Mongoose versions
+            serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+        }); 
+        console.log('MongoDB Connected for migration...');
+
+        // Find students where gender is undefined or null (or an empty string if you initially allowed it)
+        const filter = {
+            $or: [
+                { gender: { $exists: false } },
+                { gender: null },
+                { gender: '' } // Include empty strings if they might exist
+            ]
+        };
+
+        // Update these students to set a default gender
+        // You can change 'Other' to 'Male' or 'Female' if you have a reasonable default
+        const update = {
+            $set: { gender: 'Other' } // Set a default gender for missing ones
+        };
+
+        const result = await Student.updateMany(filter, update);
+
+        console.log(`Migration Complete: Modified ${result.modifiedCount} student documents to set default gender.`);
+        console.log(`Matched ${result.matchedCount} documents.`);
+
+    } catch (err) {
+        console.error('Gender migration failed:', err.message);
+        console.error(err);
+    } finally {
+        await mongoose.disconnect();
+        console.log('MongoDB Disconnected.');
+    }
+};
+
+migrateGender();

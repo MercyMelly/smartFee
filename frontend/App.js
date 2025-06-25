@@ -22,9 +22,8 @@ import BursarTabNavigator from './navigation/bursarTabNavigation';
 // Individual Bursar detail/action screens (these will be pushed onto the stack)
 import RecordPayment from './bursarScreens/recordPayment';
 import NewStudent from './bursarScreens/addStudent';
-import StudentProfile from './bursarScreens/studentProfile';
 import ProcessProduceScreen from './bursarScreens/produce';
-
+import StudentOverview from './bursarScreens/studentOverview';
 
 const Stack = createStackNavigator();
 
@@ -96,9 +95,9 @@ export default function App() {
                             options={{ headerShown: true, title: 'Add New Student' }}
                         />
                         <Stack.Screen
-                            name="studentProfile"
-                            component={StudentProfile}
-                            options={{ headerShown: true, title: 'Student Profile' }}
+                            name="studentOverview"
+                            component={StudentOverview}
+                            options={{ headerShown: true, title: 'Student Overview' }}
                         />
                     </>
                 )}
