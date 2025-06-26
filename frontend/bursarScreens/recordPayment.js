@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore'; // Ensure this path is correct
 
 // IMPORTANT: Use your actual backend IP address here! Ensure this is consistent across your app.
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api';
+const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api';
 
 const IN_KIND_ITEM_VALUES = {
     'Maize (90kg bag)': 4000,

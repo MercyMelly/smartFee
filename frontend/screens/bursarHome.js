@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons'; // For the school icon
 
 // IMPORTANT: Replace with your active ngrok HTTPS URL during development,
 // or your actual production backend domain.
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Ensure this matches your backend
+const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // Ensure this matches your backend
 
 const BursarDashboard = () => {
   const navigation = useNavigation();
@@ -206,7 +206,7 @@ const BursarDashboard = () => {
             <ActionButton icon="cash-plus" label="Record Payment" onPress={() => navigation.navigate('recordPayment')} />
             <ActionButton icon="file-tree" label="Fee Structure" onPress={() => navigation.navigate('FeeStructureTab')} />
             <ActionButton icon="alert-circle" label="Pending Payments" onPress={() => navigation.navigate('PendingPaymentsTab')} />
-            <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('produce')} />
+            <ActionButton icon="leaf" label="Value Produce" onPress={() => navigation.navigate('bulkSms')} />
             {/* Removed the 'Generate Receipt' button as it's now handled within StudentProfileScreen */}
           </View>
 

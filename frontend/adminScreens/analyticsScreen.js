@@ -19,7 +19,7 @@ import { useAuthStore } from '../store/authStore';
 import { useFocusEffect } from '@react-navigation/native';
 
 // IMPORTANT: Ensure this BASE_URL matches your backend server's IP/ngrok URL!
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Update this to your active backend URL
+const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // Update this to your active backend URL
 
 const screenWidth = Dimensions.get('window').width;
 

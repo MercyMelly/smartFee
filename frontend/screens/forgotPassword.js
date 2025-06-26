@@ -22,7 +22,7 @@ const handleSendOtp = async () => {
   setLoading(true);
   try {
       // Updated endpoint for sending OTP
-      const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/password/send-otp', { email });
+      const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/password/send-otp', { email });
       Alert.alert('OTP Sent', res.data.message || 'Please check your email for the OTP.');
       setStep(2); // Move to OTP verification step
   } catch (err) {
@@ -41,7 +41,7 @@ const handleVerifyOtp = async () => {
   setLoading(true);
   try {
       // Updated endpoint for verifying OTP
-      const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/password/verify-otp', { email, otp });
+      const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/password/verify-otp', { email, otp });
       const { token } = res.data;
       // The token received here is a temporary reset token, not a full login token.
       // We'll pass it to the resetPassword screen.
@@ -116,7 +116,7 @@ const handleResetPassword = async () => {
       // Let's refine `handleVerifyOtp` to store it so `handleResetPassword` can use it.
       // I'll add `const [resetToken, setResetToken] = useState(null);` to the component state.
 
-      const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/password/reset-password', {
+      const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/password/reset-password', {
           token: tempResetToken, // Use the token obtained from verifyOtp
           newPassword: newPassword,
       });
@@ -139,7 +139,7 @@ const handleVerifyOtpAndPrepareReset = async () => {
   }
   setLoading(true);
   try {
-      const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/password/verify-otp', { email, otp });
+      const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/password/verify-otp', { email, otp });
       const { token: receivedResetToken } = res.data; // Rename to avoid conflict with `token` from context
       
       // Store the reset token in AsyncStorage temporarily or component state

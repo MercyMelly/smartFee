@@ -22,7 +22,7 @@
 //   const login = useAuthStore((state) => state.login);
 //   const handleLogin = async (values, { setSubmitting }) => {
 //     try {
-//       const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/login', values);
+//       const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/login', values);
 //       const { token, role,user } = res.data;
 
 //       if (!token) {
@@ -228,7 +228,7 @@ export default function Login({ navigation }) {
         setSubmitting(true);
         try {
             // Update endpoint to the new general login route
-            const res = await axios.post('https://d25e-62-254-118-133.ngrok-free.app/api/login', values);
+            const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/login', values);
 
             // Destructure updated fields from the backend response
             const { token, userRole, user } = res.data; // `user` object is present for login

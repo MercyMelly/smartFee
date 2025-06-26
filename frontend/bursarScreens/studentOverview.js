@@ -1,37 +1,33 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
+    TextInput,
     TouchableOpacity,
-    ScrollView,
     StyleSheet,
     Alert,
-    Platform,
     ActivityIndicator,
-    TextInput,
-    FlatList, // Added FlatList for displaying the student list
-    KeyboardAvoidingView, // Added for keyboard handling
-    Linking
+    FlatList,
+    Platform,
+    KeyboardAvoidingView,
+    Modal, 
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuthStore } from '../store/authStore'; // Adjusted path to authStore
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons'; // For icons like search, school, people, cash, time
-
-// Expo FileSystem, Sharing, and WebBrowser for PDF handling
+import { useAuthStore } from '../store/authStore';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
-import * as IntentLauncher from 'expo-intent-launcher';
-import { Buffer } from 'buffer'; // For handling binary data in PDF generation
+import * as IntentLauncher from 'expo-intent-launcher'; // For Android intents
+import { Buffer } from 'buffer'; 
 
-
-// IMPORTANT: Replace with your active ngrok HTTPS URL during development,
-// or your actual production backend domain.
-const BASE_URL = 'https://d25e-62-254-118-133.ngrok-free.app/api'; // Ensure this matches your backend
+// IMPORTANT: Ensure this BASE_URL matches your active ngrok HTTPS URL!
+// This URL will change each time you restart ngrok unless you use a fixed domain.
+// Example: 'https://your-ngrok-subdomain.ngrok-free.app/api'
+const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // <--- VERIFY THIS URL!
 
 export default function StudentOverview() {
     const navigation = useNavigation();
@@ -45,6 +41,12 @@ export default function StudentOverview() {
     const [allStudents, setAllStudents] = useState([]);
     const [filteredStudents, setFilteredStudents] = useState([]);
     const [currentStudentProfile, setCurrentStudentProfile] = useState(null); // This holds the detailed profile
+
+    // SMS Modal States
+    const [isSmsModalVisible, setIsSmsModalVisible] = useState(false);
+    const [smsMessage, setSmsMessage] = useState('');
+    const [sendingSms, setSendingSms] = useState(false);
+
 
     // Fetch all students on component mount and when the screen is focused
     const fetchAllStudents = useCallback(async () => {
@@ -60,6 +62,7 @@ export default function StudentOverview() {
                 headers: {
                     'x-auth-token': token,
                 },
+                timeout: 15000, // Add timeout for safety
             };
             const res = await axios.get(`${BASE_URL}/students`, config);
             setAllStudents(res.data);
@@ -73,6 +76,7 @@ export default function StudentOverview() {
                 ]);
             }
         } finally {
+            console.log("[StudentOverview] All students fetched and loading set to false."); // Debug log
             setLoading(false);
         }
     }, [token, logout]);
@@ -118,15 +122,18 @@ export default function StudentOverview() {
 
         setLoading(true);
         setCurrentStudentProfile(null); // Clear previous profile before loading new one
+        console.log(`[StudentOverview] Attempting to fetch profile for admission number: ${admissionNumber}`); // Debug log
 
         try {
             const config = {
                 headers: {
                     'x-auth-token': token,
                 },
+                timeout: 15000, // Add timeout for safety
             };
             const response = await axios.get(`${BASE_URL}/students/${admissionNumber}/profile`, config);
             setCurrentStudentProfile(response.data); // Set the detailed profile
+            console.log("[StudentOverview] Profile fetched successfully:", response.data.student?.fullName); // Debug log
             setSearchQuery(''); // Clear search query after successfully loading profile
             setFilteredStudents([]); // Clear filtered list to show only the selected profile
         } catch (error) {
@@ -163,12 +170,18 @@ export default function StudentOverview() {
                     'x-auth-token': token,
                 },
                 responseType: 'arraybuffer', // Crucial for receiving binary data like PDF
+                timeout: 30000, // Longer timeout for file downloads
             };
 
             const response = await axios.get(url, config);
 
-            // Convert ArrayBuffer to Buffer, then to Base64
-            const pdfBase64 = Buffer.from(response.data, 'binary').toString('base64');
+            // Convert ArrayBuffer to Base64 (for React Native, this is how FileSystem expects it)
+            // Note: If 'Buffer' is not defined, you might need to ensure your environment polyfills it
+            // or use a different method to convert ArrayBuffer to Base64 string directly.
+            // For Expo, ArrayBuffer -> Base64 might be direct if `response.data` is an ArrayBuffer
+            // which can be written with FileSystem.EncodingType.Base64.
+            const pdfBase64 = Buffer.from(response.data).toString('base64');
+
 
             // Save the PDF to a local file
             await FileSystem.writeAsStringAsync(downloadPath, pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
@@ -182,9 +195,12 @@ export default function StudentOverview() {
                     dialogTitle: 'Open Receipt',
                 });
             } else {
+                // Fallback for devices that don't support Sharing
                 if (Platform.OS === 'ios') {
+                    // On iOS, can try opening directly with WebBrowser if Share isn't available
                     await WebBrowser.openBrowserAsync(downloadPath);
                 } else {
+                    // On Android, use IntentLauncher
                     const contentUri = await FileSystem.getContentUriAsync(downloadPath);
                     await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
                         data: contentUri,
@@ -200,9 +216,77 @@ export default function StudentOverview() {
                 Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
                     { text: 'OK', onPress: logout }
                 ]);
+            } else if (error.code === 'ECONNABORTED') {
+                Alert.alert('Error', 'Request timed out while generating receipt. Please try again.');
             }
         }
     };
+
+    // Handle sending custom SMS
+    const handleSendCustomSms = useCallback(async () => {
+        console.log("[StudentOverview] handleSendCustomSms called."); // Debug log
+        console.log("[StudentOverview] currentStudentProfile (inside callback):", currentStudentProfile); // Debug log
+
+        if (!token) {
+            Alert.alert('Authentication Error', 'You are not logged in. Please log in to send SMS.');
+            logout();
+            return;
+        }
+        // FIX: Changed condition to use admissionNumber
+        if (!currentStudentProfile || !currentStudentProfile.student?.admissionNumber) {
+            Alert.alert('Error', 'No student selected to send SMS to or admission number is missing.');
+            console.log("[StudentOverview] Debug: currentStudentProfile is null or missing student.admissionNumber."); // Updated log
+            return;
+        }
+        if (!smsMessage.trim()) {
+            Alert.alert('Error', 'Please enter a message to send.');
+            return;
+        }
+        // Check for parent phone existence and format (if not already handled by schema validation)
+        if (!currentStudentProfile.student?.parent?.phone) {
+            Alert.alert('Error', `Parent phone number not available for ${currentStudentProfile.student?.fullName}.`);
+            console.log("[StudentOverview] Debug: Parent phone number is missing."); // Debug log
+            return;
+        }
+
+        setSendingSms(true);
+        try {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-auth-token': token,
+                },
+                timeout: 15000,
+            };
+            const payload = {
+                // FIX: Send admissionNumber to backend instead of _id
+                admissionNumber: currentStudentProfile.student.admissionNumber, // Sending admissionNumber
+                message: smsMessage.trim(),
+            };
+            console.log("[StudentOverview] Sending SMS payload:", payload); // Debug log
+
+            const res = await axios.post(`${BASE_URL}/sms/send-to-parent`, payload, config);
+            console.log('SMS Send Result:', res.data);
+            Alert.alert('Success', res.data.msg || 'SMS sent successfully!');
+            setIsSmsModalVisible(false); // Close modal on success
+            setSmsMessage(''); // Clear message input
+        } catch (error) {
+            console.error('Error sending custom SMS:', error.response?.data || error.message);
+            Alert.alert(
+                'SMS Send Failed',
+                error.response?.data?.msg || error.message || 'An unknown error occurred while sending SMS.'
+            );
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+                    { text: 'OK', onPress: logout }
+                ]);
+            } else if (error.code === 'ECONNABORTED') {
+                Alert.alert('Error', 'Request timed out. Could not send SMS.');
+            }
+        } finally {
+            setSendingSms(false);
+        }
+    }, [token, smsMessage, currentStudentProfile, logout]); // Dependencies are correct for currentStudentProfile
 
 
     // Render item for the FlatList (All Students)
@@ -264,7 +348,7 @@ export default function StudentOverview() {
                         // Display detailed student profile
                         <FlatList // Using FlatList to handle potential scrolling within the profile details
                             data={[currentStudentProfile]}
-                            keyExtractor={(item) => item.student?._id?.toString() || 'profile-key'}
+                            keyExtractor={(item) => item.student?._id?.toString() || 'profile-key'} // Use _id for keyExtractor as it's typically unique for React lists
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.profileListContent}
                             renderItem={({ item: profile }) => ( // Renamed item to profile for clarity
@@ -319,6 +403,7 @@ export default function StudentOverview() {
                                             </View>
                                             <View style={styles.detailRow}>
                                                 <Text style={styles.detailLabel}>Phone:</Text>
+                                                {/* Display the phone number, if it exists */}
                                                 <Text style={styles.detailValue}>{profile.student.parent.phone || 'N/A'}</Text>
                                             </View>
                                             {profile.student.parent.email && (
@@ -336,6 +421,21 @@ export default function StudentOverview() {
                                         </>
                                     ) : (
                                         <Text style={styles.noInfoText}>Parent/Guardian information not available.</Text>
+                                    )}
+
+                                    {/* SMS Button in Parent/Guardian section */}
+                                    {/* Only show if a phone number exists */}
+                                    {profile.student?.parent?.phone && (
+                                        <TouchableOpacity
+                                            style={styles.sendSmsButton}
+                                            onPress={() => {
+                                                console.log("[StudentOverview] 'Send Message to Parent' button pressed."); // Debug log
+                                                setIsSmsModalVisible(true);
+                                            }}
+                                        >
+                                            <Ionicons name="chatbox-outline" size={20} color="#fff" />
+                                            <Text style={styles.sendSmsButtonText}>Send Message to Parent</Text>
+                                        </TouchableOpacity>
                                     )}
 
                                     {/* Fee Statement Section */}
@@ -435,7 +535,7 @@ export default function StudentOverview() {
                                     showsVerticalScrollIndicator={false}
                                 />
                             )}
-                             {!loading && allStudents.length === 0 && searchQuery.length === 0 && (
+                            {!loading && allStudents.length === 0 && searchQuery.length === 0 && (
                                 <View style={styles.noResultsCard}>
                                     <Ionicons name="information-circle-outline" size={50} color="#A5D6A7" />
                                     <Text style={styles.noResultsText}>No students recorded yet.</Text>
@@ -445,6 +545,55 @@ export default function StudentOverview() {
                     )}
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            {/* SMS Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isSmsModalVisible}
+                onRequestClose={() => setIsSmsModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <View style={styles.smsModalContainer}>
+                        <Text style={styles.smsModalTitle}>Send SMS to Parent</Text>
+                        <Text style={styles.smsModalRecipient}>
+                            To: {currentStudentProfile?.student?.fullName}'s Parent ({currentStudentProfile?.student?.parent?.phone})
+                        </Text>
+                        <TextInput
+                            style={styles.smsInput}
+                            multiline
+                            numberOfLines={4}
+                            placeholder="Type your message here..."
+                            value={smsMessage}
+                            onChangeText={setSmsMessage}
+                            maxLength={160} // Typical SMS character limit
+                        />
+                        <Text style={styles.smsCharCount}>{smsMessage.length}/160 characters</Text>
+                        <View style={styles.smsModalButtons}>
+                            <TouchableOpacity
+                                style={[styles.smsModalButton, styles.smsModalCancelButton]}
+                                onPress={() => { setIsSmsModalVisible(false); setSmsMessage(''); }}
+                            >
+                                <Text style={styles.smsModalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.smsModalButton, styles.smsModalSendButton]}
+                                onPress={handleSendCustomSms}
+                                disabled={sendingSms || smsMessage.trim().length === 0}
+                            >
+                                {sendingSms ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.smsModalButtonText}>Send SMS</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </LinearGradient>
     );
 }
@@ -462,37 +611,35 @@ const styles = StyleSheet.create({
     },
     headerContainer: {
         backgroundColor: '#FFFFFF',
-        paddingVertical: 15,
+        paddingVertical: 20,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        marginBottom: 10,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
+        borderBottomLeftRadius: 25,
+        borderBottomRightRadius: 25,
+        marginBottom: 15,
+        paddingTop: Platform.OS === 'android' ? 30 : 0, // Add padding for Android status bar
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 8,
     },
     mainTitle: {
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#1B5E20',
-        marginBottom: 15,
+        color: '#1A5319',
         textAlign: 'center',
+        marginBottom: 15,
     },
     searchCard: {
-        backgroundColor: '#F9F9F9',
-        borderRadius: 10,
-        paddingVertical: 5,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+        backgroundColor: '#F7F8FA',
+        borderRadius: 15,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 5,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -508,7 +655,21 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     clearButton: {
+        marginLeft: 10,
         padding: 5,
+    },
+    searchResultsInfo: {
+        padding: 10,
+        backgroundColor: '#E6F4EA',
+        borderRadius: 10,
+        marginHorizontal: 20,
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    searchResultsText: {
+        fontSize: 15,
+        color: '#1A5319',
+        fontWeight: 'bold',
     },
     listContainer: {
         paddingHorizontal: 20,
@@ -522,84 +683,97 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
-                shadowRadius: 4,
-            },
-            android: {
-                elevation: 3,
-            },
-        }),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 4,
     },
     listItemDetails: {
         flex: 1,
     },
     listItemName: {
         fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1A5319',
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 5,
     },
     listItemDetail: {
         fontSize: 14,
         color: '#666',
-        marginTop: 2,
+    },
+    noResultsCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 15,
+        padding: 20,
+        marginHorizontal: 20,
+        marginTop: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 150,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    noResultsText: {
+        fontSize: 16,
+        color: '#616161',
+        textAlign: 'center',
+        marginTop: 10,
     },
     profileListContent: {
         paddingHorizontal: 20,
-        paddingBottom: 20,
+        paddingBottom: 40, // More padding for scrollable content
     },
     profileCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 15,
         padding: 20,
-        marginTop: 10,
         marginBottom: 20,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 6,
-            },
-        }),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+        position: 'relative', // For close button positioning
     },
     closeProfileButton: {
         position: 'absolute',
         top: 10,
         right: 10,
-        zIndex: 1,
-        padding: 5,
+        zIndex: 1, // Ensure it's clickable
     },
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: '#388E3C',
+        marginBottom: 15,
         marginTop: 10,
-        marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center', // Center title
+        paddingBottom: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
     },
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 8,
-        borderBottomWidth: 1,
+        marginBottom: 8,
+        paddingVertical: 5,
+        borderBottomWidth: 0.5,
         borderBottomColor: '#F0F0F0',
     },
     detailLabel: {
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '500',
         color: '#555',
         flex: 1,
     },
     detailValue: {
-        fontSize: 15,
+        fontSize: 16,
         color: '#333',
         flex: 1.5,
         textAlign: 'right',
@@ -611,34 +785,49 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingVertical: 10,
     },
-    feeItemsContainer: {
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+    sendSmsButton: { // Style for the new SMS button
+        backgroundColor: '#1976D2', // Blue color
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
         borderRadius: 10,
-        padding: 10,
+        marginTop: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    sendSmsButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 8,
+    },
+    feeItemsContainer: {
         marginBottom: 10,
-        backgroundColor: '#F9F9F9',
     },
     feeItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 5,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#EBEBEB',
+        borderBottomColor: '#F0F0F0',
     },
     feeItemName: {
-        fontSize: 14,
+        fontSize: 15,
         color: '#444',
     },
     feeItemAmount: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#4CAF50',
     },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 10,
+        paddingVertical: 8,
         marginTop: 5,
         borderTopWidth: 1,
         borderTopColor: '#E0E0E0',
@@ -654,133 +843,185 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     paidRow: {
-        borderTopWidth: 0, // No double border
-    },
-    balanceRow: {
-        borderTopWidth: 1,
-        borderTopColor: '#A5D6A7', // Greenish border for balance
+        backgroundColor: '#E8F5E9',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        marginTop: 10,
     },
     summaryValuePaid: {
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: 'bold',
-        color: '#2E7D32', // Darker green for paid amount
+        color: '#2E7D32',
+    },
+    balanceRow: {
+        backgroundColor: '#FFEBEE',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        marginTop: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: '#FFCDD2',
     },
     summaryValueBalance: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: 'bold',
-        color: '#D32F2F', // Red for remaining balance
+        color: '#D32F2F',
     },
     feeNotes: {
         fontSize: 13,
         color: '#757575',
         fontStyle: 'italic',
-        marginTop: 15,
-        paddingHorizontal: 5,
-        borderLeftWidth: 3,
-        borderLeftColor: '#A5D6A7',
-        paddingLeft: 10,
+        marginTop: 10,
+        textAlign: 'center',
     },
     paymentHistoryContainer: {
         marginTop: 10,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 10,
-        padding: 10,
-        backgroundColor: '#F9F9F9',
     },
     paymentItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#EBEBEB',
+        backgroundColor: '#F9F9F9',
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#EEE',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     paymentDetailsLeft: {
-        flex: 2,
-    },
-    paymentDetailsRight: {
-        flex: 1.5,
-        alignItems: 'flex-end',
+        flex: 1,
     },
     paymentDate: {
         fontSize: 14,
-        color: '#555',
-        fontWeight: '500',
+        color: '#666',
+        marginBottom: 3,
     },
     paymentAmount: {
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#2E7D32',
-        marginTop: 2,
+        color: '#333',
+    },
+    paymentDetailsRight: {
+        alignItems: 'flex-end',
     },
     paymentMethod: {
-        fontSize: 13,
-        color: '#757575',
-        fontStyle: 'italic',
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 3,
     },
     paymentReference: {
         fontSize: 12,
-        color: '#999',
-        marginTop: 2,
+        color: '#888',
+        marginBottom: 5,
     },
     generateReceiptButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1976D2', // A blue for action
+        backgroundColor: '#1976D2',
         paddingVertical: 6,
         paddingHorizontal: 10,
-        borderRadius: 8,
-        marginTop: 8,
+        borderRadius: 20,
+        marginTop: 5,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
     },
     generateReceiptButtonText: {
         color: '#fff',
         fontSize: 12,
-        fontWeight: 'bold',
         marginLeft: 5,
+        fontWeight: 'bold',
     },
-    noResultsCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 15,
-        padding: 20,
-        marginHorizontal: 20,
-        marginTop: 20,
+    noHistoryText: {
+        fontSize: 14,
+        color: '#757575',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        paddingVertical: 10,
+    },
+
+    // NEW SMS Modal Styles
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)', // Dim background
+    },
+    smsModalContainer: {
+        width: '90%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 25,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    smsModalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1A5319',
+        marginBottom: 15,
+    },
+    smsModalRecipient: {
+        fontSize: 15,
+        color: '#555',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    smsInput: {
+        width: '100%',
+        minHeight: 80,
+        borderColor: '#A5D6A7',
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 10,
+        fontSize: 16,
+        textAlignVertical: 'top', // For multiline input to start from top
+        marginBottom: 10,
+        backgroundColor: '#F8F8F8',
+    },
+    smsCharCount: {
+        alignSelf: 'flex-end',
+        fontSize: 12,
+        color: '#757575',
+        marginBottom: 20,
+    },
+    smsModalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+    },
+    smsModalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 150,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
-                shadowRadius: 4,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
+        marginHorizontal: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 4,
     },
-    noResultsText: {
+    smsModalSendButton: {
+        backgroundColor: '#2E7D32', // Green
+    },
+    smsModalCancelButton: {
+        backgroundColor: '#EF5350', // Red
+    },
+    smsModalButtonText: {
+        color: '#fff',
         fontSize: 16,
-        color: '#616161',
-        textAlign: 'center',
-        marginTop: 10,
-    },
-    searchResultsInfo: {
-        marginHorizontal: 20,
-        marginBottom: 10,
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: '#E8F5E9',
-        borderRadius: 10,
-    },
-    searchResultsText: {
-        fontSize: 14,
-        color: '#388E3C',
         fontWeight: 'bold',
     },
 });

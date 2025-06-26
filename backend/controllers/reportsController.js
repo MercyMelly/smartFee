@@ -175,8 +175,7 @@ const Payment = require('../models/paymentsDB');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const sendSMS = require('../utils/sendSMS');
-
+const sendSMS = require('../config/africasTalking').sendSMS; // Ensure this is correctly imported
 exports.getOutstandingByClass = async (req, res) => {
     try {
         const data = await Student.aggregate([

@@ -13,17 +13,16 @@ import ResetPassword from './screens/resetPassword';
 
 // Admin Screens
 import { AdminHome } from './screens/adminHome';
-import AddStaffScreen from './adminScreens/addStaff'; // Path check: assuming directly under adminScreens
-import AdminAnalyticsScreen from './adminScreens/analyticsScreen'; // <--- NEW IMPORT
+import AddStaffScreen from './adminScreens/addStaff';
+import AdminAnalyticsScreen from './adminScreens/analyticsScreen';
 
 // Bursar Screens (These will either be direct tabs or navigatable stack screens)
 import BursarTabNavigator from './navigation/bursarTabNavigation';
-
-// Individual Bursar detail/action screens (these will be pushed onto the stack)
 import RecordPayment from './bursarScreens/recordPayment';
 import NewStudent from './bursarScreens/addStudent';
 import ProcessProduceScreen from './bursarScreens/produce';
 import StudentOverview from './bursarScreens/studentOverview';
+import BulkSmsScreen from './bursarScreens/bulkSms'; // <--- NEW: Import the Bulk SMS Screen
 
 const Stack = createStackNavigator();
 
@@ -68,7 +67,7 @@ export default function App() {
                             component={AddStaffScreen}
                             options={{ headerShown: true, title: 'Add New Staff Member' }}
                         />
-                        <Stack.Screen // <--- NEW SCREEN REGISTRATION
+                        <Stack.Screen
                             name="analyticsScreen"
                             component={AdminAnalyticsScreen}
                             options={{ headerShown: false }} // Header handled within the screen itself
@@ -85,9 +84,9 @@ export default function App() {
                             options={{ headerShown: true, title: 'Record Payment' }}
                         />
                         <Stack.Screen
-                            name="produce"
-                            component={ProcessProduceScreen}
-                            options={{ headerShown: true, title: 'Process Produce' }}
+                            name="bulkSms" // Name for navigation.navigate('bulkSms')
+                            component={BulkSmsScreen}
+                            options={{ headerShown: true, title: 'Bulk SMS' }}
                         />
                         <Stack.Screen
                             name="addStudent"
@@ -99,6 +98,8 @@ export default function App() {
                             component={StudentOverview}
                             options={{ headerShown: true, title: 'Student Overview' }}
                         />
+
+
                     </>
                 )}
             </Stack.Navigator>

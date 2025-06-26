@@ -32,7 +32,7 @@ export default function ResetPassword({ navigation }) {
     setLoading(true);
     try {
       const response = await axios.post(
-        'https://d25e-62-254-118-133.ngrok-free.app/api/reset-password',
+        'https://3ece-62-254-118-133.ngrok-free.app/api/reset-password',
         { password: newPassword, confirmPassword },
         {
           headers: {
