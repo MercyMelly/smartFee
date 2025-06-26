@@ -66,8 +66,8 @@ async function generateReceiptPdf(paymentData, studentData, currentBalance) {
             doc.moveDown(0.7);
             
             
-            // Payer & Student Info (on the left, aligned with receipt number)
-            doc.moveDown(0.8); // add some spacing before this block if needed
+            // Payer & Student Info 
+            doc.moveDown(0.8); 
 
             doc.fontSize(11).font('Helvetica-Bold')
                .text('Student Details:', 50, doc.y, { underline: true });
