@@ -1,79 +1,3 @@
-
-// const express = require('express');
-// const cors = require('cors');
-// const connectDB = require('./config/db');
-// const dotenv = require('dotenv');
-
-// dotenv.config();
-// connectDB();
-
-// const app = express();
-
-// // --- DEBUGGING START ---
-// app.use((req, res, next) => {
-//     console.log(`[SERVER_DEBUG] Incoming request: ${req.method} ${req.originalUrl}`);
-//     console.log(`[SERVER_DEBUG] Headers:`, req.headers['content-type'], req.headers['x-paystack-signature']);
-//     next();
-// });
-// // --- DEBUGGING END ---
-
-// app.use(cors());
-
-// // IMPORTANT: Middleware to parse JSON and capture raw body for Paystack webhook
-// app.use(express.json({
-//     verify: (req, res, buf) => {
-//         if (req.originalUrl === '/api/webhooks/paystack') {
-//             try {
-//                 req.rawBody = buf.toString();
-//                 console.log('[SERVER_DEBUG] Raw body captured for Paystack webhook.');
-//             } catch (e) {
-//                 console.error('[SERVER_DEBUG] Error capturing raw body:', e.message);
-//                 // If there's an error here, it indicates a problem with the incoming buffer itself.
-//                 // This might indicate Paystack is sending something unexpected, or ngrok is corrupting.
-//             }
-//         }
-//     }
-// }));
-// app.use(express.urlencoded({ extended: true }));
-
-// const PORT = process.env.PORT || 3000;
-
-// const authRoutes = require('./routes/auth');
-// const studentRoutes = require('./routes/students');
-// const paymentRoutes = require('./routes/payments');
-// const reportsRoutes = require('./routes/reports');
-// const dashboardRoutes = require('./routes/dashboard');
-// const otpRoutes = require('./routes/otpRoutes');
-// const feeRoutes = require('./routes/fee');
-// const webhooksRoutes = require('./routes/webhooks'); // Corrected variable name for clarity
-
-// app.use('/api', authRoutes);
-// app.use('/api/students', studentRoutes);
-// app.use('/api/payments', paymentRoutes);
-// app.use('/api/reports', reportsRoutes);
-// app.use('/api/dashboard', dashboardRoutes);
-// app.use('/api/password', otpRoutes);
-// app.use('/api/fees', feeRoutes);
-
-// // NEW: Paystack Webhook and Pending Payments routes
-// app.use('/api/webhooks', webhooksRoutes); // Use the variable name
-
-// // --- DEBUGGING START ---
-// // Catch-all route to log if no other route handled the request
-// app.use((req, res, next) => {
-//     console.warn(`[SERVER_DEBUG] 404 Not Found: No route handled ${req.method} ${req.originalUrl}`);
-//     res.status(404).send('Cannot ' + req.method + ' ' + req.originalUrl);
-// });
-// // --- DEBUGGING END ---
-
-// app.listen(PORT, '0.0.0.0', () => {
-//     console.log(`Server running on http://0.0.0.0:${PORT}`);
-//     console.log(`Current local time: ${new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })}`);
-// });
-
-
-
-
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -84,59 +8,70 @@ connectDB();
 
 const app = express();
 
-// --- DEBUGGING START --- (Keep this if you like)
-app.use((req, res, next) => {
-    console.log(`[SERVER_DEBUG] Incoming request: ${req.method} ${req.originalUrl}`);
-    console.log(`[SERVER_DEBUG] Headers:`, req.headers['content-type'], req.headers['x-paystack-signature']);
-    next();
-});
-// --- DEBUGGING END ---
+// Middleware to parse JSON bodies and specifically store rawBody for webhooks
+// This MUST come BEFORE any other body-parsing middleware for the webhook route.
 
-app.use(cors());
-
-// IMPORTANT: Middleware to parse JSON and capture raw body for Paystack webhook
 app.use(express.json({
     verify: (req, res, buf) => {
-        if (req.originalUrl === '/api/webhooks/paystack') {
+        // CRITICAL FIX: The ONLY webhook route should be /api/payments/webhook
+        // Paystack MUST be configured to send webhooks to YOUR_BACKEND_URL/api/payments/webhook
+        if (req.originalUrl === '/api/payments/webhook') { 
             try {
                 req.rawBody = buf.toString();
-                console.log('[SERVER_DEBUG] Raw body captured for Paystack webhook.');
+                console.log('[SERVER_DEBUG] Raw body captured for Paystack webhook at /api/payments/webhook.');
             } catch (e) {
-                console.error('[SERVER_DEBUG] Error capturing raw body:', e.message);
+                console.error('[SERVER_DEBUG] Error capturing raw body for webhook:', e.message);
             }
         }
     }
 }));
+// For URL-encoded bodies (e.g., form submissions). Make sure it's after the rawBody middleware for webhooks.
 app.use(express.urlencoded({ extended: true }));
+
+app.use(cors()); // Enable CORS for all routes
+
+// Basic URL logging for debug
+app.use((req, res, next) => {
+    console.log(`[SERVER_DEBUG] Incoming request: ${req.method} ${req.originalUrl}`);
+    console.log(`[SERVER_DEBUG] Headers: Content-Type=${req.headers['content-type'] || 'undefined'}, X-Paystack-Signature=${req.headers['x-paystack-signature'] || 'undefined'}`);
+    next();
+});
 
 const PORT = process.env.PORT || 3000;
 
+// Import your routes
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
-const paymentRoutes = require('./routes/payments');
+const paymentRoutes = require('./routes/payments'); // This is your main payments route
 const reportsRoutes = require('./routes/reports');
 const dashboardRoutes = require('./routes/dashboard');
 const otpRoutes = require('./routes/otpRoutes');
 const feeRoutes = require('./routes/fee');
-const webhooksRoutes = require('./routes/webhooks');
-const smsRoutes = require('./routes/sms'); // NEW: Import SMS routes
+// const webhooksRoutes = require('./routes/webhooks'); // <--- REMOVE OR COMMENT THIS LINE IF IT STILL EXISTS IN YOUR server.js
+const smsRoutes = require('./routes/sms'); 
+const parentRoutes = require('./routes/parents');
+const pricesRoutes = require('./routes/prices'); 
+const ussdController = require('./controllers/ussdController');
 
-app.use('/api', authRoutes);
+// Mount your routes
+app.use('/api/auth', authRoutes); 
 app.use('/api/students', studentRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use('/api/payments', paymentRoutes); // This route now handles ALL payment logic, including the webhook
 app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/password', otpRoutes);
 app.use('/api/fees', feeRoutes);
-app.use('/api/webhooks', webhooksRoutes);
-app.use('/api/sms', smsRoutes); // NEW: Register SMS routes
+// app.use('/api/webhooks', webhooksRoutes); // <--- ENSURE THIS LINE IS REMOVED OR COMMENTED OUT
+app.use('/api/sms', smsRoutes); 
+app.use('/api/parents', parentRoutes);
+app.use('/api/prices', pricesRoutes); 
+app.post('/api/ussd', ussdController.ussdCallback); 
 
-// --- DEBUGGING CATCH-ALL --- (Keep this to catch unhandled routes)
+// General 404 handler (should be last route middleware)
 app.use((req, res, next) => {
     console.warn(`[SERVER_DEBUG] 404 Not Found: No route handled ${req.method} ${req.originalUrl}`);
     res.status(404).send('Cannot ' + req.method + ' ' + req.originalUrl);
 });
-// --- DEBUGGING END ---
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);

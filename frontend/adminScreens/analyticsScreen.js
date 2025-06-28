@@ -17,9 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { useFocusEffect } from '@react-navigation/native';
-
-// IMPORTANT: Ensure this BASE_URL matches your backend server's IP/ngrok URL!
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // Update this to your active backend URL
+import { BASE_URL } from '../config/index';
 
 const screenWidth = Dimensions.get('window').width;
 

@@ -23,11 +23,8 @@ import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import * as IntentLauncher from 'expo-intent-launcher'; // For Android intents
 import { Buffer } from 'buffer'; 
+import { BASE_URL } from '../config/index';
 
-// IMPORTANT: Ensure this BASE_URL matches your active ngrok HTTPS URL!
-// This URL will change each time you restart ngrok unless you use a fixed domain.
-// Example: 'https://your-ngrok-subdomain.ngrok-free.app/api'
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // <--- VERIFY THIS URL!
 
 export default function StudentOverview() {
     const navigation = useNavigation();

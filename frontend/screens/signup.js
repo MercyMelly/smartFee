@@ -53,7 +53,7 @@
 //         password,
 //         role,
 //       };
-//       const res = await axios.post('https://3ece-62-254-118-133.ngrok-free.app/api/signup', userData)
+//       const res = await axios.post('https://b683-185-69-144-98.ngrok-free.app/api/signup', userData)
 //       {console.log(res.data)};
 //         Alert.alert('User created successfully', 'You can now login with your credentials',[
 //         {
@@ -263,6 +263,7 @@
 //     fontWeight: 'bold',
 //   },
 // });
+
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Dimensions, Platform } from 'react-native';
 import { Formik } from 'formik';
@@ -270,10 +271,8 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthStore } from '../store/authStore'; // Assuming this path is correct
-
-// IMPORTANT: Ensure this IP address is correct and accessible from your device!
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // Use the IP from your Login.js/AdminHome.js
+import { useAuthStore } from '../store/authStore'; 
+import { BASE_URL } from '../config/index'; 
 
 const UserSignupSchema = Yup.object().shape({
     fullName: Yup.string()

@@ -17,9 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
-
-// IMPORTANT: Ensure this BASE_URL matches your active ngrok HTTPS URL!
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api';
+import { BASE_URL } from '../config/index';
 
 export default function AddStudent({ navigation }) {
     const { token, logout } = useAuthStore();
@@ -56,7 +54,7 @@ export default function AddStudent({ navigation }) {
     });
 
     const ALL_VALID_GRADES = [
-        "", "Pre-Nursery", "Nursery", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
+        "","PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
         "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9",
         "Grade 10", "Grade 11", "Grade 12"
     ];

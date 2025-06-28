@@ -17,10 +17,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
-import { PieChart, BarChart } from 'react-native-chart-kit'; // Import BarChart as well
-
-// IMPORTANT: Ensure this BASE_URL matches your backend server's IP/ngrok URL!
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api';
+import { PieChart, BarChart } from 'react-native-chart-kit'; 
+import { BASE_URL } from '../config/index';
 
 const screenWidth = Dimensions.get('window').width;
 

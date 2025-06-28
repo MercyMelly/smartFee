@@ -1,40 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react'; // Added useCallback
 import {
     View,
     Text,
-    Switch,
     TouchableOpacity,
     StyleSheet,
     Alert,
     ScrollView,
-    Platform, // For platform-specific shadows
-    // Removed: Dimensions, // No longer needed for font scaling
+    Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
-// Removed: import BottomNav from '../screens/bottomNav';
-
-// Removed: Get screen width for responsive font sizing
-// Removed: const { width } = Dimensions.get('window');
-
-// Removed: Function to scale font size based on screen width
-// Removed: const scaleFont = (size) => {
-// Removed:     const standardScreenWidth = 375; // iPhone 6/7/8 width
-// Removed:     const scale = width / standardScreenWidth;
-// Removed:     return Math.round(size * scale);
-// Removed: };
 
 const SettingsScreen = () => {
-    const [darkMode, setDarkMode] = useState(false);
     const navigation = useNavigation();
-    const logout = useAuthStore(state => state.logout);
+    const { logout, user } = useAuthStore(); // Destructure user from useAuthStore
     const route = useRoute();
-    const token = route.params?.token || useAuthStore((state) => state.token);
+    const token = route.params?.token || useAuthStore((state) => state.token); // Keep token for resetPassword navigation
 
-    const handleLogout = () => {
+    // Function to handle logout confirmation
+    const handleLogout = useCallback(() => {
         Alert.alert('Confirm Logout', 'Are you sure you want to log out?', [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -42,90 +29,97 @@ const SettingsScreen = () => {
                 style: 'destructive',
                 onPress: async () => {
                     await logout();
-                    navigation.replace('login');
+                    // Navigation handled by App.js based on auth state change
                 },
             },
         ]);
-    };
+    }, [logout]);
 
-    const handleResetPassword = () => {
+    // Function to navigate to reset password screen
+    const handleResetPassword = useCallback(() => {
         navigation.navigate('resetPassword', { token: token });
-    };
+    }, [navigation, token]);
+
+    // Reusable component for setting options
+    const SettingsOption = ({ iconName, title, onPress, isDestructive = false }) => (
+        <TouchableOpacity
+            style={styles.optionRow}
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            <View style={styles.rowLeft}>
+                <Icon name={iconName} size={22} color={isDestructive ? '#D32F2F' : '#4CAF50'} />
+                <Text style={[styles.optionText, isDestructive && styles.destructiveText]}>{title}</Text>
+            </View>
+            <Icon name="chevron-right" size={22} color="#BDBDBD" />
+        </TouchableOpacity>
+    );
+
+    // Reusable component for info rows (like Version or User Info)
+    const InfoRow = ({ iconName, title, value }) => (
+        <View style={styles.optionRow}>
+            <View style={styles.rowLeft}>
+                <Icon name={iconName} size={22} color="#4CAF50" />
+                <Text style={styles.optionText}>{title}</Text>
+            </View>
+            <Text style={styles.detailText}>{value}</Text>
+        </View>
+    );
 
     return (
-        <LinearGradient colors={['#E8F5E9', '#DCEDC8']} style={styles.gradientContainer}>
+        <LinearGradient colors={['#E8F5E9', '#C8E6C9']} style={styles.gradientContainer}>
             <SafeAreaView style={styles.safeArea}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
                     {/* Header */}
                     <View style={styles.headerContainer}>
                         <Text style={styles.header}>Settings</Text>
                         <Text style={styles.subHeader}>Manage your app preferences and account</Text>
                     </View>
 
-                    {/* Preferences Section */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Preferences</Text>
-                        <View style={styles.optionRow}>
-                            <View style={styles.rowLeft}>
-                                <Icon name="theme-light-dark" size={24} color="#388E3C" />
-                                <Text style={styles.optionText}>Dark Mode</Text>
-                            </View>
-                            <Switch
-                                value={darkMode}
-                                onValueChange={setDarkMode}
-                                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                                thumbColor={darkMode ? '#4CAF50' : '#f4f3f4'}
-                                ios_backgroundColor="#3e3e3e"
-                            />
+                    {/* Bursar Account Information Section */}
+                    {user && ( // Only render if user object exists
+                        <View style={styles.sectionCard}>
+                            <Text style={styles.sectionTitle}>
+                                <Icon name="account-circle-outline" size={20} color="#388E3C" /> My Account
+                            </Text>
+                            <InfoRow iconName="account" title="Full Name" value={user.fullName || 'N/A'} />
+                            <InfoRow iconName="email-outline" title="Email" value={user.email || 'N/A'} />
+                            <InfoRow iconName="badge-account-outline" title="Role" value={user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'N/A'} />
+                            {user.username && <InfoRow iconName="account-details-outline" title="Username" value={user.username} />}
+                            {/* You can add more user details here if available in your user object */}
                         </View>
-                    </View>
+                    )}
 
-                    {/* Account Section */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Account</Text>
-
-                        <TouchableOpacity
-                            style={styles.optionRow}
+                    {/* Account Management Section */}
+                    <View style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>
+                            <Icon name="cog-outline" size={20} color="#388E3C" /> Account Actions
+                        </Text>
+                        <SettingsOption
+                            iconName="lock-reset"
+                            title="Reset Password"
                             onPress={handleResetPassword}
-                            activeOpacity={0.7}
-                        >
-                            <View style={styles.rowLeft}>
-                                <Icon name="lock-reset" size={24} color="#388E3C" />
-                                <Text style={styles.optionText}>Reset Password</Text>
-                            </View>
-                            <Icon name="chevron-right" size={24} color="#9E9E9E" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.optionRow}
+                        />
+                        <SettingsOption
+                            iconName="logout"
+                            title="Log Out"
                             onPress={handleLogout}
-                            activeOpacity={0.7}
-                        >
-                            <View style={styles.rowLeft}>
-                                <Icon name="logout" size={24} color="#D32F2F" />
-                                <Text style={[styles.optionText, { color: '#D32F2F' }]}>Log Out</Text>
-                            </View>
-                            <Icon name="chevron-right" size={24} color="#9E9E9E" />
-                        </TouchableOpacity>
+                            isDestructive={true} // Mark as destructive for red color
+                        />
                     </View>
 
                     {/* About Section */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>About</Text>
-                        <TouchableOpacity style={styles.optionRow} activeOpacity={0.7}>
-                            <View style={styles.rowLeft}>
-                                <Icon name="information-outline" size={24} color="#388E3C" />
-                                <Text style={styles.optionText} adjustsFontSizeToFit>Version</Text>
-                            </View>
-                            <Text style={styles.detailText}>1.0.0</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.optionRow} activeOpacity={0.7}>
-                            <View style={styles.rowLeft}>
-                                <Icon name="file-document-outline" size={24} color="#388E3C" />
-                                <Text style={styles.optionText} adjustsFontSizeToFit>Privacy Policy</Text>
-                            </View>
-                            <Icon name="chevron-right" size={24} color="#9E9E9E" />
-                        </TouchableOpacity>
+                    <View style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>
+                            <Icon name="information-outline" size={20} color="#388E3C" /> About App
+                        </Text>
+                        <InfoRow iconName="code-tags" title="Version" value="1.0.0" />
+                        <SettingsOption
+                            iconName="file-document-outline"
+                            title="Privacy Policy"
+                            onPress={() => Alert.alert('Privacy Policy')}
+                        />
                     </View>
 
                 </ScrollView>
@@ -133,7 +127,6 @@ const SettingsScreen = () => {
         </LinearGradient>
     );
 };
-
 
 const styles = StyleSheet.create({
     gradientContainer: {
@@ -143,75 +136,91 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        padding: 20, // Reverted to fixed padding
-        paddingBottom: 20, // Reverted to fixed padding
+        paddingHorizontal: 20,
+        paddingTop: 30, // More top padding
+        paddingBottom: 40,
     },
     headerContainer: {
-        marginBottom: 30, // Reverted to fixed margin
+        marginBottom: 30,
         alignItems: 'center',
+        backgroundColor: 'transparent', // Make header background transparent
     },
     header: {
-        fontSize: 32, // Reverted to fixed font size
+        fontSize: 34, // Slightly larger
         fontWeight: 'bold',
-        color: '#1B5E20',
-        marginBottom: 8, // Reverted to fixed margin
+        color: '#1B5E20', // Dark green
+        marginBottom: 8,
         letterSpacing: 0.5,
     },
     subHeader: {
-        fontSize: 16, // Reverted to fixed font size
+        fontSize: 16,
         color: '#555',
         textAlign: 'center',
-        paddingHorizontal: 20, // Reverted to fixed padding
+        paddingHorizontal: 20,
+        lineHeight: 24,
     },
-    section: {
-        marginBottom: 25, // Reverted to fixed margin
-    },
-    sectionTitle: {
-        fontSize: 19, // Reverted to fixed font size
-        fontWeight: '600',
-        marginBottom: 15, // Reverted to fixed margin
-        color: '#388E3C',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8F5E9',
-        paddingBottom: 8, // Reverted to fixed padding
-        marginLeft: 5, // Reverted to fixed margin
-    },
-    optionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    sectionCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12, // Reverted to fixed border radius
-        paddingVertical: 18, // Reverted to fixed padding
-        paddingHorizontal: 20, // Reverted to fixed padding
-        marginBottom: 10, // Reverted to fixed margin
-        justifyContent: 'space-between',
+        borderRadius: 15,
+        paddingVertical: 20,
+        paddingHorizontal: 15,
+        marginBottom: 25, // More space between sections
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 3 }, // Reverted to fixed shadow offset
+                shadowOffset: { width: 0, height: 5 },
                 shadowOpacity: 0.1,
-                shadowRadius: 5, // Reverted to fixed shadow radius
+                shadowRadius: 10,
             },
             android: {
-                elevation: 5, // Reverted to fixed elevation
+                elevation: 8,
             },
         }),
         borderWidth: 1,
         borderColor: '#E0E0E0',
+    },
+    sectionTitle: {
+        fontSize: 19,
+        fontWeight: '700', // Bolder
+        marginBottom: 18, // More space below title
+        color: '#388E3C', // Accent green
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0', // Lighter border
+        paddingBottom: 10,
+        marginLeft: 0, // Reset margin
+        textAlign: 'left',
+        flexDirection: 'row', // For icon and text alignment
+        alignItems: 'center',
+        gap: 10, // Space between icon and text
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 15, // Increased vertical padding
+        borderBottomWidth: 1,
+        borderBottomColor: '#F5F5F5', // Very light grey separator
+        // No background or shadow here, sectionCard handles it
     },
     rowLeft: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     optionText: {
-        fontSize: 17, // Reverted to fixed font size
-        marginLeft: 18, // Reverted to fixed margin
+        fontSize: 17,
+        marginLeft: 15, // Space from icon
         color: '#333',
+        fontWeight: '500', // Medium weight
+    },
+    destructiveText: {
+        color: '#D32F2F', // Red for logout
+        fontWeight: '600',
     },
     detailText: {
-        fontSize: 16, // Reverted to fixed font size
+        fontSize: 16,
         color: '#757575',
-    }
+        fontWeight: '400',
+    },
 });
 
 export default SettingsScreen;

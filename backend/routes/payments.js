@@ -1,26 +1,94 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth'); // Assuming your auth middleware path is correct
+const { protect, authorize } = require('../middleware/auth');
+const paymentController = require('../controllers/paymentsController');
 
-const {
-    recordPayment,
-    getTodayPayments,
-    getPendingProduce,
-    getOutstandingFeesByClass,
-    getTotalOutstandingFees,
-    getPaymentByReferenceNumber,
-    getPaymentsByStudent,
-    generateReceipt
-} = require('../controllers/paymentsController');
+// Middleware to capture raw body for webhook verification
+router.use(express.json({
+    verify: (req, res, buf) => {
+        if (req.originalUrl.includes('/webhook')) {
+            req.rawBody = buf;
+        }
+    }
+}));
 
-// Apply auth middleware to routes that require authentication
-router.post('/record', auth, recordPayment); // <--- FIX: Added 'auth' middleware here!
-router.get('/today', auth, getTodayPayments);
-router.get('/pending-produce', auth, getPendingProduce);
-router.get('/outstanding/class', auth, getOutstandingFeesByClass);
-router.get('/outstanding/total', auth, getTotalOutstandingFees);
-router.get('/receipt/:referenceNumber', auth, getPaymentByReferenceNumber); // Assuming this is for viewing a receipt
-router.get('/student/:admissionNumber', auth, getPaymentsByStudent);
-router.get('/generate-receipt/:paymentId', auth, generateReceipt); // For generating PDF receipt
+// Payment Recording & Retrieval
+// ============================
+
+router.post(
+  '/record',
+  protect, // Auth middleware
+  paymentController.recordPayment
+);
+
+// 🌟 Record IN-KIND payments (Produce)
+router.post(
+  '/record-in-kind',
+  protect,
+  paymentController.recordInKindPayment
+);
+
+
+// router.get('/student/:admissionNumber', 
+//     protect, 
+//     authorize(['bursar', 'admin', 'director']), 
+//     paymentController.getStudentPayments
+// );
+
+router.get('/generate-receipt/:paymentId', 
+    protect, 
+    authorize(['bursar', 'admin', 'director']), 
+    paymentController.generateReceipt
+);
+
+
+// Paystack Integration
+// ====================
+router.post('/initialize-paystack', 
+    protect, 
+    authorize('parent'), 
+    paymentController.initializePaystackTransaction
+);
+
+router.post('/webhook', express.raw({type: 'application/json'}), paymentController.handlePaystackWebhook);
+
+
+
+
+router.get('/pending-in-kind', 
+    protect, 
+    authorize(['bursar', 'admin', 'director']), 
+    paymentController.getPendingInKind
+);
+
+router.post('/link-pending', 
+    protect, 
+    authorize(['bursar', 'admin', 'director']), 
+    paymentController.linkPendingPayment
+);
+
+// router.post('/confirm-pending/:paymentId', 
+//     protect, 
+//     authorize(['bursar', 'admin', 'director']), 
+//     paymentController.confirmPendingPayment
+// );
+router.get('/pending', protect, paymentController.getPendingPayments);
+
+// Confirm pending payment
+router.post('/confirm-pending/:id', protect, paymentController.confirmPendingPayment);
+
+// Additional utility endpoint
+router.get('/pending/count', 
+    protect, 
+    // authorize(['bursar', 'admin', 'director']), 
+    async (req, res) => {
+        try {
+            const count = await PendingPayment.countDocuments({ status: 'pending' });
+            res.json({ count });
+        } catch (error) {
+            res.status(500).send('Internal Server Error');
+        }
+    }
+);
 
 module.exports = router;

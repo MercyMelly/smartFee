@@ -1,39 +1,26 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    Alert,
-    ActivityIndicator,
-    ScrollView,
-    Dimensions,
-    Platform
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Dimensions, Platform } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Picker } from '@react-native-picker/picker'; // For role selection
-import { useAuthStore } from '../store/authStore'; // Adjust path if necessary
+import { useAuthStore } from '../store/authStore'; // Assuming this path is correct
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 import { BASE_URL } from '../config/index';
 
-const AddStaffSchema = Yup.object().shape({
+
+const ParentSignupSchema = Yup.object().shape({
     fullName: Yup.string()
         .min(2, 'Full name too short')
         .max(50, 'Full name too long')
         .required('Full name is required'),
     email: Yup.string()
-        .email('Invalid email address')
+        .email('Invalid email')
         .required('Email is required'),
     phoneNumber: Yup.string()
         .matches(/^\+?[0-9]{10,15}$/, 'Phone number is not valid (e.g., +2547XXXXXXXX)')
         .required('Phone number is required'),
-    role: Yup.string()
-        .oneOf(['bursar', 'admin', 'director'], 'Invalid role selected')
-        .required('Role is required'),
     password: Yup.string()
         .min(8, 'Password must be at least 8 characters')
         .matches(/[a-z]/, 'Must include a lowercase letter')
@@ -46,47 +33,45 @@ const AddStaffSchema = Yup.object().shape({
         .required('Confirm Password is required'),
 });
 
-export default function AddStaffScreen({ navigation }) {
+export default function ParentSignupScreen() {
+    const navigation = useNavigation(); // Initialize navigation hook
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const { token } = useAuthStore(); // Get token from auth store for authenticated request
+    const login = useAuthStore((state) => state.login); // Get the login action from Zustand
 
-    const handleAddStaff = async (values, { setSubmitting, resetForm }) => {
+    const handleParentSignup = async (values, { setSubmitting }) => {
         setSubmitting(true);
         try {
-            const { fullName, email, phoneNumber, role, password } = values;
+            const { fullName, email, phoneNumber, password } = values;
 
-            const staffData = {
+            const userData = {
                 fullName,
                 email,
                 phoneNumber,
-                role,
                 password,
+                // Role is NOT sent from here; it's set by the backend to 'parent'
             };
 
-            // Ensure authentication token is sent with the request
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-auth-token': token, // Send the token obtained from login/signup
-                },
-            };
+            // *** IMPORTANT: Target the new parent-specific signup endpoint ***
+            const res = await axios.post(`${BASE_URL}/auth/parent-signup`, userData);
 
-            const res = await axios.post(`${BASE_URL}/add-staff`, staffData, config);
+            console.log("Parent Signup successful:", res.data);
 
-            console.log("Add Staff successful:", res.data);
+            // Use the login action from authStore to set global state and AsyncStorage
+            await login(res.data);
 
             Alert.alert(
-                'Staff Added!',
-                `${fullName} (${role}) has been successfully added. They can now log in using their email and password.`,
-                [{ text: 'OK', onPress: () => resetForm() }] // Clear form on success
+                'Account Created!',
+                `Welcome, ${fullName}! Your parent account has been successfully created.`,
+                // App.js will now handle redirection based on the 'parent' role in authStore
+                [{ text: 'OK' }]
             );
 
         } catch (err) {
-            console.error("Add Staff error:", err.response?.data || err.message);
+            console.error("Parent Signup error:", err.response?.data || err.message);
             Alert.alert(
-                'Add Staff Failed',
-                err.response?.data?.msg || err.message || 'An unknown error occurred while adding staff.'
+                'Signup Failed',
+                err.response?.data?.msg || err.message || 'An unknown error occurred during signup.'
             );
         } finally {
             setSubmitting(false);
@@ -97,24 +82,25 @@ export default function AddStaffScreen({ navigation }) {
         <LinearGradient colors={['#e8f5e9', '#c8e6c9']} style={styles.gradient}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.card}>
-                    <Text style={styles.title}>Add New Staff Member</Text>
+                    <Text style={styles.title}>Create Parent Account</Text>
+                    <Text style={styles.subtitle}>for Tindiret Educational Centre</Text>
                     <Formik
                         initialValues={{
                             fullName: '',
                             email: '',
                             phoneNumber: '',
-                            role: '', // Initial empty role
                             password: '',
                             confirmPassword: '',
                         }}
-                        validationSchema={AddStaffSchema}
-                        onSubmit={handleAddStaff}
+                        validationSchema={ParentSignupSchema}
+                        onSubmit={handleParentSignup}
                     >
-                        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => (
+                        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
                             <>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Full Name"
+                                    placeholder="Your Full Name"
+                                    placeholderTextColor="#757575"
                                     onChangeText={handleChange('fullName')}
                                     onBlur={handleBlur('fullName')}
                                     value={values.fullName}
@@ -123,7 +109,8 @@ export default function AddStaffScreen({ navigation }) {
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Email"
+                                    placeholder="Your Email"
+                                    placeholderTextColor="#757575"
                                     keyboardType="email-address"
                                     onChangeText={handleChange('email')}
                                     onBlur={handleBlur('email')}
@@ -134,7 +121,8 @@ export default function AddStaffScreen({ navigation }) {
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Phone Number"
+                                    placeholder="Your Phone Number (e.g., +2547XXXXXXXX)"
+                                    placeholderTextColor="#757575"
                                     keyboardType="phone-pad"
                                     onChangeText={handleChange('phoneNumber')}
                                     onBlur={handleBlur('phoneNumber')}
@@ -142,32 +130,17 @@ export default function AddStaffScreen({ navigation }) {
                                 />
                                 {touched.phoneNumber && errors.phoneNumber && <Text style={styles.error}>{errors.phoneNumber}</Text>}
 
-                                <Text style={styles.label}>Select Role:</Text>
-                                <View style={styles.pickerWrapper}>
-                                    <Picker
-                                        selectedValue={values.role}
-                                        style={styles.picker}
-                                        onValueChange={(itemValue) => setFieldValue('role', itemValue)}
-                                    >
-                                        <Picker.Item label="Choose Role" value="" enabled={false} style={{ color: '#757575' }} />
-                                        <Picker.Item label="Bursar" value="bursar" />
-                                        <Picker.Item label="Admin" value="admin" />
-                                        <Picker.Item label="Director" value="director" />
-                                    </Picker>
-                                </View>
-                                {touched.role && errors.role && <Text style={styles.error}>{errors.role}</Text>}
-
-
                                 <View style={styles.passwordContainer}>
                                     <TextInput
-                                        style={[styles.input, { flex: 1 }]}
+                                        style={[styles.input, { flex: 1, marginBottom: 0 }]} // Adjust marginBottom
                                         placeholder="Password"
+                                        placeholderTextColor="#757575"
                                         secureTextEntry={!showPassword}
                                         onChangeText={handleChange('password')}
                                         onBlur={handleBlur('password')}
                                         value={values.password}
                                     />
-                                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                                         <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={24} color="#2e7d32" />
                                     </TouchableOpacity>
                                 </View>
@@ -175,14 +148,15 @@ export default function AddStaffScreen({ navigation }) {
 
                                 <View style={styles.passwordContainer}>
                                     <TextInput
-                                        style={[styles.input, { flex: 1 }]}
+                                        style={[styles.input, { flex: 1, marginBottom: 0 }]} // Adjust marginBottom
                                         placeholder="Confirm Password"
+                                        placeholderTextColor="#757575"
                                         secureTextEntry={!showConfirm}
                                         onChangeText={handleChange('confirmPassword')}
                                         onBlur={handleBlur('confirmPassword')}
                                         value={values.confirmPassword}
                                     />
-                                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={styles.eyeIcon}>
                                         <Ionicons name={showConfirm ? 'eye-off' : 'eye'} size={24} color="#2e7d32" />
                                     </TouchableOpacity>
                                 </View>
@@ -192,8 +166,12 @@ export default function AddStaffScreen({ navigation }) {
                                     {isSubmitting ? (
                                         <ActivityIndicator size="small" color="#ffffff" />
                                     ) : (
-                                        <Text style={styles.buttonText}>Add Staff</Text>
+                                        <Text style={styles.buttonText} adjustsFontSizeToFit>Create Parent Account</Text>
                                     )}
+                                </TouchableOpacity>
+
+                                <TouchableOpacity onPress={() => navigation.navigate('login')} style={styles.loginLink}>
+                                    <Text style={styles.loginText}>Already have an account? <Text style={styles.loginHighlight} adjustsFontSizeToFit>Login</Text></Text>
                                 </TouchableOpacity>
                             </>
                         )}
@@ -234,6 +212,12 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#2e7d32',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#4CAF50',
         marginBottom: 24,
         textAlign: 'center',
     },
@@ -246,33 +230,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderRadius: 8,
         backgroundColor: '#f1f8f4',
-        color: '#333',
-        fontSize: 16,
-    },
-    label: {
-        alignSelf: 'flex-start',
-        width: '100%',
-        marginBottom: 8,
-        fontSize: 16,
-        color: '#555',
-        fontWeight: '600',
-        paddingLeft: 5,
-    },
-    pickerWrapper: {
-        width: '100%',
-        borderColor: '#a5d6a7',
-        borderWidth: 1,
-        borderRadius: 8,
-        backgroundColor: '#f1f8f4',
-        marginBottom: 12, // Adjusted for error messages
-        overflow: 'hidden',
-        height: 48, // Match input height
-        justifyContent: 'center',
-    },
-    picker: {
-        width: '100%',
-        height: 48,
-        color: '#333',
     },
     passwordContainer: {
         flexDirection: 'row',
@@ -284,6 +241,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: '#f1f8f4',
         paddingRight: 12,
+    },
+    eyeIcon: {
+        paddingLeft: 10,
     },
     button: {
         backgroundColor: '#2e7d32',
@@ -305,6 +265,16 @@ const styles = StyleSheet.create({
         color: 'red',
         marginBottom: 6,
         alignSelf: 'flex-start',
-        paddingLeft: 5,
+    },
+    loginLink: {
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    loginText: {
+        color: '#3b3b3b',
+    },
+    loginHighlight: {
+        color: '#2e7d32',
+        fontWeight: 'bold',
     },
 });

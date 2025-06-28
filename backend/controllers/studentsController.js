@@ -369,17 +369,18 @@
 //   }
 // };
 // backend/controllers/studentsController.js
+// backend/controllers/studentsController.js
 
 const Student = require('../models/studentsDB');
 const FeeStructure = require('../models/feeStructure');
-const Payment = require('../models/paymentsDB'); // Assuming you have a Payment model for history
+const Payment = require('../models/paymentsDB'); // Assuming Payment model is correctly imported
 
-// Helper function to calculate total expected fees based on student and fee structure
+// Helper function to calculate total expected fees (keeping it consistent)
 const calculateTotalExpectedFees = async (gradeLevel, boardingStatus, hasTransport, transportRoute) => {
     let feeRecord = null;
 
-    // IMPORTANT: This logic is complex and should ideally be streamlined or pre-calculated
-    // It's trying to find the MOST SPECIFIC fee structure.
+    // --- Strategy: Prioritize more specific matches, then fallback ---
+
     // 1. Try to find a very specific match including transport route if applicable
     if (boardingStatus === 'Day' && hasTransport && transportRoute) {
         const routeKey = transportRoute.toLowerCase();
@@ -447,7 +448,7 @@ const calculateTotalExpectedFees = async (gradeLevel, boardingStatus, hasTranspo
 /**
  * @route POST /api/students/register
  * @desc Register a new student
- * @access Private (Bursar, Admin, Director)
+ * @access Private (Bursar, Admin, Director roles should be handled in controller)
  */
 exports.registerStudent = async (req, res) => {
     // Destructure all expected fields, including the nested 'parent' object
@@ -529,16 +530,36 @@ exports.registerStudent = async (req, res) => {
 
 /**
  * @route GET /api/students
- * @desc Get all students
+ * @desc Get all students, with optional search and outstanding balance filter
  * @access Private
  */
 exports.getAllStudents = async (req, res) => {
     try {
-        const students = await Student.find({}).sort({ admissionNumber: 1 });
+        const searchQuery = req.query.q; // For general search (e.g., in RecordPayment/Produce screens)
+        const filterOutstanding = req.query.outstanding === 'true'; // New filter for Bulk SMS screen
+
+        let query = {};
+        if (searchQuery) {
+            const regex = new RegExp(searchQuery, 'i'); // Case-insensitive search
+            query = {
+                $or: [
+                    { fullName: { $regex: regex } },
+                    { admissionNumber: { $regex: regex } }
+                ]
+            };
+        }
+
+        if (filterOutstanding) {
+            // Add condition for outstanding balance
+            query['feeDetails.remainingBalance'] = { $gt: 0 };
+        }
+
+        // Always sort by admission number for consistent lists
+        const students = await Student.find(query).sort({ admissionNumber: 1 });
         res.status(200).json(students);
     } catch (error) {
         console.error('Error fetching all students:', error.message);
-        res.status(500).json({ message: 'Server error', error: error.message });
+        res.status(500).json({ message: 'Server error.', error: error.message });
     }
 };
 
@@ -609,13 +630,6 @@ exports.getStudentProfile = async (req, res) => {
         if (student.feeDetails.remainingBalance !== remainingBalance) {
             updateFields['feeDetails.remainingBalance'] = remainingBalance;
             needsUpdate = true;
-        }
-
-        // If you encounter issues with old documents missing 'gender' (though schema now requires it)
-        // you might add a fix here. For new entries, this won't be needed.
-        if (!student.gender) {
-            // This case should ideally not happen with strict schema validation on new entries
-            // For old data, you might set a default before saving if not handled by migration
         }
 
         if (needsUpdate) {
@@ -717,16 +731,7 @@ exports.getStudentProfile = async (req, res) => {
  */
 exports.updateStudent = async (req, res) => {
     const { admissionNumber } = req.params;
-    // Destructure all possible update fields including the nested parent
-    const {
-        fullName,
-        gradeLevel,
-        gender,
-        boardingStatus,
-        hasTransport,
-        transportRoute,
-        parent // This will be the nested parent object if provided
-    } = req.body;
+    const { fullName, gradeLevel, gender, boardingStatus, hasTransport, transportRoute, parent } = req.body;
 
     try {
         const student = await Student.findOne({ admissionNumber: admissionNumber.toUpperCase() });
@@ -734,15 +739,12 @@ exports.updateStudent = async (req, res) => {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
-        let feesChanged = false; // Flag to indicate if fee-affecting fields have changed
+        let feesChanged = false;
 
-        // Update top-level fields
         if (fullName !== undefined) student.fullName = fullName;
         if (gender !== undefined && student.gender !== gender) {
             student.gender = gender;
         }
-
-        // Update nested parent fields if the parent object is provided in the request
         if (parent) {
             if (parent.name !== undefined) student.parent.name = parent.name;
             if (parent.phone !== undefined) student.parent.phone = parent.phone;
@@ -750,8 +752,6 @@ exports.updateStudent = async (req, res) => {
             if (parent.address !== undefined) student.parent.address = parent.address;
         }
 
-        // Check for changes in gradeLevel, boardingStatus, hasTransport, transportRoute
-        // These changes affect fees and potentially trigger recalculation
         if (gradeLevel !== undefined && student.gradeLevel !== gradeLevel) {
             student.gradeLevel = gradeLevel;
             feesChanged = true;
@@ -761,7 +761,6 @@ exports.updateStudent = async (req, res) => {
             feesChanged = true;
         }
 
-        // Handle transport changes based on boarding status
         if (student.boardingStatus === 'Day') {
             if (hasTransport !== undefined && student.hasTransport !== hasTransport) {
                 student.hasTransport = hasTransport;
@@ -770,20 +769,17 @@ exports.updateStudent = async (req, res) => {
             if (student.hasTransport && transportRoute !== undefined && student.transportRoute !== transportRoute) {
                 student.transportRoute = transportRoute;
                 feesChanged = true;
-            } else if (!student.hasTransport && student.transportRoute !== '') { // If transport removed, clear route
+            } else if (!student.hasTransport) { // If transport is explicitly false, clear route
                 student.transportRoute = '';
-                feesChanged = true;
+                if (transportRoute !== '') feesChanged = true; // Mark as changed if route was cleared
             }
         } else if (student.boardingStatus === 'Boarding') {
-            // If now Boarding, transport fields must be false/empty
-            if (student.hasTransport || student.transportRoute !== '') {
-                feesChanged = true; // Mark as changed if it was previously true/set
-            }
+            if (student.hasTransport) feesChanged = true;
+            if (student.transportRoute !== '') feesChanged = true;
             student.hasTransport = false;
             student.transportRoute = '';
         }
 
-        // Recalculate totalFees and remainingBalance if fee-related fields changed
         if (feesChanged) {
             const newTotalExpectedFees = await calculateTotalExpectedFees(
                 student.gradeLevel,
@@ -792,21 +788,20 @@ exports.updateStudent = async (req, res) => {
                 student.transportRoute
             );
 
-            // Calculate new remaining balance based on previous feesPaid and new totalFees
             const newRemainingBalance = newTotalExpectedFees - student.feeDetails.feesPaid;
 
             student.feeDetails.totalFees = newTotalExpectedFees;
             student.feeDetails.remainingBalance = newRemainingBalance;
         }
 
-        await student.save(); // Save the updated student document
+        await student.save();
         res.status(200).json({ message: 'Student updated successfully', student });
 
     } catch (error) {
         console.error('Error updating student:', error.message);
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(val => val.message);
-            return res.status(400).json({ message: messages.join(', ') });
+            return res.status(400).json({ message: 'Validation failed', errors: error.errors });
         }
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -815,13 +810,13 @@ exports.updateStudent = async (req, res) => {
 /**
  * @route DELETE /api/students/:admissionNumber
  * @desc Delete a student
- * @access Private (Admin, Director) - consider who can delete
+ * @access Private (Admin, Director)
  */
 exports.deleteStudent = async (req, res) => {
     // Optional: Add role authorization here if only specific roles can delete students
-    // if (req.user.role !== 'admin' && req.user.role !== 'director') {
-    //     return res.status(403).json({ msg: 'Not authorized to delete students.' });
-    // }
+    if (!['admin', 'director'].includes(req.user.role)) {
+        return res.status(403).json({ msg: 'Not authorized to delete students.' });
+    }
     try {
         const student = await Student.findOneAndDelete({ admissionNumber: req.params.admissionNumber.toUpperCase() });
         if (!student) {

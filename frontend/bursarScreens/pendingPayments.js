@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-    View, Text, FlatList, ActivityIndicator, StyleSheet,
-    TouchableOpacity, Alert, RefreshControl
+    View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, Alert, RefreshControl
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
@@ -9,8 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore'; // Adjust path to your auth store
+import { BASE_URL } from '../config'; // Ensure BASE_URL is correct here
 
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // *** IMPORTANT: Replace with your actual backend IP or domain ***
 
 export default function PendingPaymentsScreen() {
     const { token } = useAuthStore(); // Get auth token from your global store
@@ -28,7 +27,7 @@ export default function PendingPaymentsScreen() {
             const config = {
                 headers: { 'x-auth-token': token },
             };
-            const response = await axios.get(`${BASE_URL}/webhooks/pending`, config);
+            const response = await axios.get(`${BASE_URL}/payments/pending`, config);
             setPendingPayments(response.data);
         } catch (error) {
             console.error('Error fetching pending payments:', error.response?.data || error.message);
@@ -68,7 +67,7 @@ export default function PendingPaymentsScreen() {
                             const config = {
                                 headers: { 'x-auth-token': token },
                             };
-                            const response = await axios.post(`${BASE_URL}/webhooks/confirm-pending/${paymentId}`, {}, config);
+                            const response = await axios.post(`${BASE_URL}/payments/confirm-pending/${paymentId}`, {}, config);
                             Alert.alert('Success', response.data.message);
                             fetchPendingPayments(); // Refresh the list after confirmation
                         } catch (error) {

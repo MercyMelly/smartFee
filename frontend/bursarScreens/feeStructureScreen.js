@@ -4,8 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
-
-const BASE_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api/fees'; 
+import { BASE_URL } from '../config/index';
 
 const SCHOOL_BANK_DETAILS = {
   bankName: "Equity Bank Kenya",
@@ -429,7 +428,7 @@ const styles = StyleSheet.create({
 // // This is crucial for multi-tenancy (multiple schools)
 // const SCHOOL_ID = 'your_logged_in_school_id_here'; // This must be dynamic
 // const AUTH_TOKEN = 'your_auth_token_here'; // This must be dynamic
-// const BASE_API_URL = 'https://3ece-62-254-118-133.ngrok-free.app/api'; // Your backend API base URL
+// const BASE_API_URL = 'https://b683-185-69-144-98.ngrok-free.app/api'; // Your backend API base URL
 
 // export default function ManageFeeStructureScreen() {
 //   const [loading, setLoading] = useState(false);
