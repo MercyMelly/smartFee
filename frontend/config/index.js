@@ -1,4 +1,4 @@
 
-const BASE_URL = 'https://0233-185-69-145-185.ngrok-free.app/api'; 
+const BASE_URL = 'https://76e7-85-255-237-142.ngrok-free.app/api'; 
 
 export { BASE_URL };

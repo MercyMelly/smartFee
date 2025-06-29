@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform
@@ -11,82 +10,33 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BASE_URL } from '../config/index';
 
-const PRICE_API_URL = 'http://10.157.136.18:5000/api/prices';
-
 export default function RecordPayment({ navigation, route }) {
-  const defaultCounty = route.params?.county || 'Nandi';
-  const defaultMarket = route.params?.market || 'Chepterit Market - Nandi';
-
+  
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [transactionReference, setTransactionReference] = useState('');
   const [payerName, setPayerName] = useState('');
   const [notes, setNotes] = useState('');
-
-  const [inKindItemType, setInKindItemType] = useState('');
-  const [inKindQuantity, setInKindQuantity] = useState('');
-
   const [loading, setLoading] = useState(false);
-  const [pricePerKg, setPricePerKg] = useState(null);
 
-  const PAYMENT_METHODS = ['', 'M-Pesa', 'Bank Transfer','In-Kind'];
-
-  useEffect(() => {
-    if (paymentMethod === 'In-Kind' && inKindItemType) {
-      fetchLatestPrice(defaultCounty, inKindItemType);
-    }
-  }, [paymentMethod, inKindItemType]);
-
-  useEffect(() => {
-    if (paymentMethod === 'In-Kind' && pricePerKg != null && inKindQuantity) {
-      const totalValue = pricePerKg * parseFloat(inKindQuantity) * 90;
-      setAmountPaid(totalValue.toFixed(2));
-    }
-  }, [pricePerKg, inKindQuantity, paymentMethod]);
-
-  const fetchLatestPrice = async (county, commodity) => {
-    try {
-      const resp = await axios.get(PRICE_API_URL, {
-        params: { county, commodity }
-      });
-      const data = resp.data;
-      if (data.length > 0) {
-        const wholesaleStr = data[0].wholesale; // e.g. '70.00/Kg'
-        const parsed = parseFloat(wholesaleStr.replace(/\/Kg/, ''));
-        setPricePerKg(parsed);
-      } else {
-        Alert.alert('Price Not Found', `No wholesale price for ${commodity} in ${county}`);
-        setPricePerKg(null);
-      }
-    } catch (e) {
-      console.error('Fetching price error', e);
-      Alert.alert('Error', 'Could not fetch latest commodity price');
-      setPricePerKg(null);
-    }
-  };
+  const PAYMENT_METHODS = ['', 'M-Pesa', 'Bank Transfer'];
 
   const handleRecordPayment = async () => {
     if (!admissionNumber || !paymentMethod) {
       return Alert.alert('Missing', 'Admission number & payment method are required');
     }
-    if (paymentMethod === 'In-Kind') {
-      if (!inKindItemType || !inKindQuantity || isNaN(inKindQuantity) || inKindQuantity <= 0) {
-        return Alert.alert('Invalid In-Kind', 'Select item & enter valid quantity');
-      }
-      if (!amountPaid || isNaN(amountPaid) || amountPaid <= 0) {
-        return Alert.alert('Error', 'Unexpected valuation amount');
-      }
-      if (!transactionReference) {
-        return Alert.alert('Missing Reference', 'Provide an internal reference');
-      }
-    } else {
-      if (!amountPaid || isNaN(amountPaid) || amountPaid <= 0) {
-        return Alert.alert('Invalid Amount', 'Enter a positive payment amount');
-      }
-      if (['M-Pesa', 'Bank Transfer', 'Cheque'].includes(paymentMethod) && !transactionReference.trim()) {
-        return Alert.alert('Missing Reference', 'Provide transaction reference');
-      }
+    
+    if (!amountPaid || isNaN(amountPaid)) {
+      return Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+    }
+    
+    if (parseFloat(amountPaid) <= 0) {
+      return Alert.alert('Invalid Amount', 'Payment amount must be greater than zero');
+    }
+    
+    if (['M-Pesa', 'Bank Transfer', 'Cheque'].includes(paymentMethod) && !transactionReference.trim()) {
+      return Alert.alert('Missing Reference', 'Please provide transaction reference');
     }
 
     setLoading(true);
@@ -99,12 +49,6 @@ export default function RecordPayment({ navigation, route }) {
         payerName: payerName.trim() || undefined,
         notes: notes.trim() || undefined,
       };
-      if (paymentMethod === 'In-Kind') {
-        paymentData.inKindItemType = inKindItemType;
-        paymentData.inKindQuantity = parseFloat(inKindQuantity);
-        paymentData.county = defaultCounty;
-        paymentData.market = defaultMarket;
-      }
 
       const resp = await axios.post(`${BASE_URL}/payments/record`, paymentData);
       Alert.alert('Success', `Payment recorded. Remaining balance: KSh ${resp.data.updatedStudentBalance.remainingBalance.toLocaleString()}`);
@@ -124,9 +68,6 @@ export default function RecordPayment({ navigation, route }) {
     setTransactionReference('');
     setPayerName('');
     setNotes('');
-    setInKindItemType('');
-    setInKindQuantity('');
-    setPricePerKg(null);
   };
 
   return (
@@ -142,77 +83,68 @@ export default function RecordPayment({ navigation, route }) {
                 <Ionicons name="cash-outline" size={24} color="#388E3C" /> Payment Details
               </Text>
 
-              {/* Prefilled fields */}
-              <Text style={styles.prefillLabel}>County</Text>
-              <TextInput style={styles.inputPrefill} value={defaultCounty} editable={false} />
-
-              <Text style={styles.prefillLabel}>Market</Text>
-              <TextInput style={styles.inputPrefill} value={defaultMarket} editable={false} />
-
               <TextInput
-                style={styles.input} placeholder="Admission Number *"
-                value={admissionNumber} onChangeText={setAdmissionNumber}
+                style={styles.input} 
+                placeholder="Admission Number *"
+                value={admissionNumber} 
+                onChangeText={setAdmissionNumber}
                 autoCapitalize="characters"
               />
 
               <Text style={styles.label}>Payment Method *</Text>
               <View style={styles.pickerWrapper}>
-                <Picker selectedValue={paymentMethod} style={styles.picker} onValueChange={setPaymentMethod}>
+                <Picker 
+                  selectedValue={paymentMethod} 
+                  style={styles.picker} 
+                  onValueChange={setPaymentMethod}
+                >
                   <Picker.Item label="Select Method" value="" enabled={false} color="#757575" />
                   {PAYMENT_METHODS.slice(1).map(m => <Picker.Item key={m} label={m} value={m} />)}
                 </Picker>
               </View>
 
-              {paymentMethod === 'In-Kind' ? (
-                <>
-                  <Text style={styles.label}>In-Kind Item *</Text>
-                  <View style={styles.pickerWrapper}>
-                    <Picker selectedValue={inKindItemType} style={styles.picker} onValueChange={setInKindItemType}>
-                      <Picker.Item label="Select Item" value="" enabled={false} color="#757575" />
-                      {['White Maize', 'Millet', 'Sorghum', 'Beans', 'Firewood'].map(item => (
-                        <Picker.Item key={item} label={item} value={item} />
-                      ))}
-                    </Picker>
-                  </View>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Amount Paid *"
+                value={amountPaid} 
+                onChangeText={setAmountPaid} 
+                keyboardType="numeric"
+              />
 
-                  <TextInput style={styles.input} placeholder="Quantity (# of 90kg bags/trucks) *"
-                    value={inKindQuantity} onChangeText={setInKindQuantity} keyboardType="numeric"
-                  />
-
-                  {pricePerKg !== null && (
-                    <Text style={styles.calculatedAmountText}>
-                      Price/Kg: KSh {pricePerKg.toLocaleString()} → Total: KSh {parseFloat(amountPaid).toLocaleString()}
-                    </Text>
-                  )}
-                </>
-              ) : (
-                <TextInput style={styles.input} placeholder="Amount Paid *"
-                  value={amountPaid} onChangeText={setAmountPaid} keyboardType="numeric"
-                />
-              )}
-
-              {['M-Pesa', 'Bank Transfer', 'Cheque', 'In-Kind'].includes(paymentMethod) && (
-                <TextInput style={styles.input}
+              {['M-Pesa', 'Bank Transfer', 'Cheque'].includes(paymentMethod) && (
+                <TextInput 
+                  style={styles.input}
                   placeholder={
                     paymentMethod === 'M-Pesa' ? 'M-Pesa Transaction ID' :
                     paymentMethod === 'Bank Transfer' ? 'Bank Transaction Reference' :
-                    paymentMethod === 'Cheque' ? 'Cheque Number' :
-                    'Internal Reference'
+                    'Cheque Number'
                   }
                   value={transactionReference}
                   onChangeText={setTransactionReference}
                 />
               )}
 
-              <TextInput style={styles.input}
-                placeholder="Payer Name (Optional)" value={payerName} onChangeText={setPayerName}
+              <TextInput 
+                style={styles.input}
+                placeholder="Payer Name (Optional)" 
+                value={payerName} 
+                onChangeText={setPayerName}
               />
-              <TextInput style={[styles.input, styles.textArea]}
-                placeholder="Notes (Optional)" value={notes} onChangeText={setNotes} multiline
+              
+              <TextInput 
+                style={[styles.input, styles.textArea]}
+                placeholder="Notes (Optional)" 
+                value={notes} 
+                onChangeText={setNotes} 
+                multiline
               />
             </View>
 
-            <TouchableOpacity style={styles.button} onPress={handleRecordPayment} disabled={loading}>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={handleRecordPayment} 
+              disabled={loading}
+            >
               {loading ? <ActivityIndicator color="#fff" /> :
                 <Text style={styles.buttonText}>Record Payment</Text>}
             </TouchableOpacity>
@@ -223,7 +155,6 @@ export default function RecordPayment({ navigation, route }) {
   );
 }
 
-// Add styles: reuse yours but add inputPrefill and prefillLabel
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safeArea: { flex: 1 },
@@ -261,12 +192,9 @@ const styles = StyleSheet.create({
     ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 }, android: { elevation: 2 } }),
   },
   picker: { width: '100%', height: 55, color: '#333' },
-  calculatedAmountText: { alignSelf: 'flex-start', marginLeft: 5, marginBottom: 15, fontSize: 16, fontWeight: 'bold', color: '#1B5E20' },
   button: { backgroundColor: '#4CAF50', padding: 18, borderRadius: 10, width: '100%', alignItems: 'center', marginTop: 20 },
   buttonText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 });
-
-
 
 // import React, { useState, useEffect } from 'react';
 // import {

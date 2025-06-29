@@ -60,7 +60,7 @@ app.use('/api/payments', paymentRoutes); // This route now handles ALL payment l
 app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/password', otpRoutes);
-app.use('/api/fees', feeRoutes);
+app.use('/api', feeRoutes);
 // app.use('/api/webhooks', webhooksRoutes); // <--- ENSURE THIS LINE IS REMOVED OR COMMENTED OUT
 app.use('/api/sms', smsRoutes); 
 app.use('/api/parents', parentRoutes);

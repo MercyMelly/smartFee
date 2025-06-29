@@ -52,36 +52,104 @@ export default function PendingPaymentsScreen() {
     }, [fetchPendingPayments]);
 
 
-    const handleConfirmPayment = async (paymentId) => {
-        if (!token) return;
-        Alert.alert(
-            'Confirm Payment',
-            'Are you sure you want to confirm and record this payment?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Confirm',
-                    onPress: async () => {
-                        try {
-                            setLoading(true); // Indicate loading for confirmation
-                            const config = {
-                                headers: { 'x-auth-token': token },
-                            };
-                            const response = await axios.post(`${BASE_URL}/payments/confirm-pending/${paymentId}`, {}, config);
-                            Alert.alert('Success', response.data.message);
-                            fetchPendingPayments(); // Refresh the list after confirmation
-                        } catch (error) {
-                            console.error('Error confirming payment:', error.response?.data || error.message);
-                            Alert.alert('Error', error.response?.data?.message || 'Failed to confirm payment.');
-                        } finally {
-                            setLoading(false);
-                        }
-                    },
-                },
-            ]
-        );
-    };
+    const initiatePaystackPayment = async () => {
+    if (!admissionNumber || !email || !amount || parseFloat(amount) <= 0) {
+        Alert.alert('Missing Information', 'Please fill in Admission Number, Email, and a valid Amount.');
+        return;
+    }
 
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        Alert.alert('Invalid Amount', 'Please enter a valid positive number for the amount.');
+        return;
+    }
+    
+    if (!token) {
+        Alert.alert('Authentication Required', 'You need to be logged in to make payments. Please log in.');
+        logout();
+        return;
+    }
+
+    Alert.alert(
+        "Confirm Payment",
+        `You are about to pay KSh ${parsedAmount.toLocaleString()} for student with Admission No: ${admissionNumber}. Do you wish to proceed?`,
+        [
+        { text: "Cancel", style: "cancel" },
+        {
+            text: "Pay Now",
+            onPress: async () => {
+            setLoading(true); 
+            try {
+                const config = {
+                headers: {
+                    'x-auth-token': token,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 20000,
+                };
+
+                let studentBackendId = currentStudentId;
+                if (!studentBackendId) {
+                try {
+                    const studentLookupRes = await axios.get(`${BASE_URL}/parents/students/${admissionNumber}/profile`, config);
+                    studentBackendId = studentLookupRes.data.student?._id;
+                    setCurrentStudentId(studentBackendId); 
+                } catch (lookupError) {
+                    console.error('Error looking up student profile:', lookupError);
+                    setLoading(false); 
+                    Alert.alert('Error', 'Failed to find student. Please check the admission number and your internet connection.');
+                    return; 
+                }
+                }
+
+                if (!studentBackendId) {
+                setLoading(false); 
+                Alert.alert('Error', 'Student ID could not be retrieved. Please verify the admission number.');
+                return;
+                }
+
+                const initRes = await axios.post(`${BASE_URL}/payments/initialize-paystack`, {
+                studentId: studentBackendId, 
+                amount: parsedAmount, 
+                payerEmail: email,
+                studentAdmissionNumber: admissionNumber,
+                metadata: { // Critical for auto-confirmation
+                    studentId: studentBackendId,
+                    paymentSource: 'parent_app',
+                    payerUserId: currentUserId, // From your auth store
+                    studentAdmissionNumber: admissionNumber
+                }
+                }, config);
+
+                const { authorization_url } = initRes.data;
+
+                if (!authorization_url) {
+                throw new Error('Failed to get authorization URL from backend.');
+                }
+                
+                setLoading(false); 
+                navigation.navigate('paystack', { 
+                authorization_url: authorization_url,
+                onSuccess: () => {
+                    Alert.alert('Success', 'Payment completed successfully! You will receive a confirmation shortly.');
+                }
+                });
+
+            } catch (err) {
+                setLoading(false); 
+                console.error('Error calling backend for Paystack initialization:', err);
+                Alert.alert('Payment Error', `Failed to initiate payment setup. Please try again. Error: ${err.message}`);
+                if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+                    { text: 'OK', onPress: logout }
+                ]);
+                }
+            }
+            }
+        }
+        ]
+    );
+    };
     const renderItem = ({ item }) => (
         <View style={styles.paymentCard}>
             <View style={styles.cardHeader}>

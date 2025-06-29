@@ -183,114 +183,194 @@ exports.recordPayment = asyncHandler(async (req, res) => {
   }
 });
 
+// exports.recordInKindPayment = asyncHandler(async (req, res) => {
+  
+//   const {
+//     admissionNumber,
+//     amountPaid,
+//     transactionReference,
+//     payerName,
+//     notes,
+//     inKindItemType,
+//     inKindQuantity,
+//     inKindUnitPrice,
+//     unitSizeKg,
+//     county,
+//     market,
+//   } = req.body;
+
+//   if (
+//     !admissionNumber ||
+//     !amountPaid ||
+//     !inKindItemType ||
+//     !inKindQuantity ||
+//     !inKindUnitPrice
+//   ) {
+//     return res.status(400).json({
+//       message: 'Admission number, in-kind item type, quantity, unit price, and amount are required.',
+//     });
+//   }
+
+//   const quantityNumber = parseFloat(inKindQuantity);
+//   const unitPriceNumber = parseFloat(inKindUnitPrice);
+//   const amountNumber = parseFloat(amountPaid);
+//   const kgPerUnit = unitSizeKg ? parseFloat(unitSizeKg) : 90;
+
+//   if (isNaN(quantityNumber) || quantityNumber <= 0) {
+//     return res.status(400).json({ message: 'Quantity must be a positive number.' });
+//   }
+//   if (isNaN(unitPriceNumber) || unitPriceNumber < 0) {
+//     return res.status(400).json({ message: 'Unit price must be a non-negative number.' });
+//   }
+//   if (isNaN(kgPerUnit) || kgPerUnit <= 0) {
+//     return res.status(400).json({ message: 'Unit size must be a positive number.' });
+//   }
+
+//   const expectedAmount = quantityNumber * kgPerUnit * unitPriceNumber;
+
+//   if (Math.abs(expectedAmount - amountNumber) > 5) {
+//     return res.status(400).json({
+//       message: `Calculated amount mismatch. Expected ~KSh ${expectedAmount.toFixed(2)}, got KSh ${amountNumber.toFixed(2)}.`,
+//     });
+//   }
+
+//   const student = await Student.findOne({
+//     admissionNumber: admissionNumber.trim().toUpperCase(),
+//   });
+//   if (!student) {
+//     return res.status(404).json({ message: 'Student not found.' });
+//   }
+
+//   const finalReference = transactionReference?.trim() || `IN-KIND-${Date.now()}`;
+
+//   const payment = new Payment({
+//     student: student._id,
+//     admissionNumber: student.admissionNumber,
+//     amountPaid: amountNumber,
+//     paymentMethod: 'In-Kind',
+//     transactionReference: finalReference,
+//     payerName: payerName || '',
+//     notes,
+//     paymentDate: new Date(),
+//     recordedBy: req.user?.id,
+//     source: 'In-Kind Produce Entry',
+//     inKindDetails: {
+//       itemType: inKindItemType.trim(),
+//       quantity: quantityNumber,
+//       unitSizeKg: kgPerUnit,
+//       unitPrice: unitPriceNumber,
+//       ...(county && { county }),
+//       ...(market && { market }),
+//     },
+//     status: 'confirmed',
+//     confirmedAt: new Date(),
+//     confirmedBy: req.user?.id,
+//   });
+
+//   await payment.save();
+
+//   student.feeDetails.feesPaid += amountNumber;
+//   student.feeDetails.remainingBalance = Math.max(
+//     student.feeDetails.totalFees - student.feeDetails.feesPaid,
+//     0
+//   );
+
+//   await student.save();
+
+//   // ✅ Send SMS via helper
+//   await require('../utils/sendPaymentNotification').sendPaymentNotification(student, {
+//     quantity: quantityNumber,
+//     unitSize: kgPerUnit,
+//     itemType: inKindItemType.trim(),
+//     amount: amountNumber,
+//     remainingBalance: student.feeDetails.remainingBalance,
+//   });
+
+//   res.json({
+//     message: 'In-kind payment recorded successfully.',
+//     updatedStudentBalance: student.feeDetails,
+//   });
+// });
+
 exports.recordInKindPayment = asyncHandler(async (req, res) => {
-  const {
-    admissionNumber,
-    amountPaid,
-    transactionReference,
-    payerName,
-    notes,
-    inKindItemType,
-    inKindQuantity,
-    inKindUnitPrice,
-    unitSizeKg,
-    county,
-    market,
-  } = req.body;
+  try {
+    const {
+      admissionNumber,
+      amountPaid,
+      transactionReference,
+      payerName,
+      notes,
+      inKindItemType,
+      inKindQuantity,
+      inKindUnitPrice,
+      county,
+      market,
+    } = req.body;
 
-  if (
-    !admissionNumber ||
-    !amountPaid ||
-    !inKindItemType ||
-    !inKindQuantity ||
-    !inKindUnitPrice
-  ) {
-    return res.status(400).json({
-      message: 'Admission number, in-kind item type, quantity, unit price, and amount are required.',
+    // Basic student lookup
+    const student = await Student.findOne({
+      admissionNumber: admissionNumber?.trim().toUpperCase(),
+    });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    // Prepare payment data with defaults
+    const paymentData = {
+      student: student._id,
+      admissionNumber: student.admissionNumber,
+      amountPaid: parseFloat(amountPaid) || 0,
+      paymentMethod: 'In-Kind',
+      transactionReference: transactionReference?.trim() || `IN-KIND-${Date.now()}`,
+      payerName: payerName || '',
+      notes: notes || '',
+      paymentDate: new Date(),
+      inKindItemType: inKindItemType || '',
+      inKindQuantity: parseFloat(inKindQuantity) || 0,
+      inKindUnitPrice: parseFloat(inKindUnitPrice) || 0,
+      county: county || '',
+      market: market || '',
+      status: 'confirmed',
+      confirmedAt: new Date()
+    };
+
+    // Create and save payment
+    const payment = new Payment(paymentData);
+    await payment.save();
+
+    // Update student balance
+    student.feeDetails.feesPaid += payment.amountPaid;
+    student.feeDetails.remainingBalance = Math.max(
+      student.feeDetails.totalFees - student.feeDetails.feesPaid,
+      0
+    );
+    await student.save();
+
+    // Send notification with proper data structure
+    await require('../utils/sendPaymentNotification').sendPaymentNotification(student, {
+      quantity: payment.inKindQuantity || 0,
+      unitSize: 90, // Standard bag size
+      itemType: payment.inKindItemType || '',
+      amount: payment.amountPaid,
+      remainingBalance: student.feeDetails.remainingBalance,
+    });
+
+    res.json({
+      success: true,
+      message: 'In-kind payment recorded successfully',
+      payment,
+      updatedStudentBalance: student.feeDetails
+    });
+
+  } catch (error) {
+    console.error('Error recording in-kind payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error recording payment',
+      error: error.message
     });
   }
-
-  const quantityNumber = parseFloat(inKindQuantity);
-  const unitPriceNumber = parseFloat(inKindUnitPrice);
-  const amountNumber = parseFloat(amountPaid);
-  const kgPerUnit = unitSizeKg ? parseFloat(unitSizeKg) : 90;
-
-  if (isNaN(quantityNumber) || quantityNumber <= 0) {
-    return res.status(400).json({ message: 'Quantity must be a positive number.' });
-  }
-  if (isNaN(unitPriceNumber) || unitPriceNumber < 0) {
-    return res.status(400).json({ message: 'Unit price must be a non-negative number.' });
-  }
-  if (isNaN(kgPerUnit) || kgPerUnit <= 0) {
-    return res.status(400).json({ message: 'Unit size must be a positive number.' });
-  }
-
-  const expectedAmount = quantityNumber * kgPerUnit * unitPriceNumber;
-
-  if (Math.abs(expectedAmount - amountNumber) > 5) {
-    return res.status(400).json({
-      message: `Calculated amount mismatch. Expected ~KSh ${expectedAmount.toFixed(2)}, got KSh ${amountNumber.toFixed(2)}.`,
-    });
-  }
-
-  const student = await Student.findOne({
-    admissionNumber: admissionNumber.trim().toUpperCase(),
-  });
-  if (!student) {
-    return res.status(404).json({ message: 'Student not found.' });
-  }
-
-  const finalReference = transactionReference?.trim() || `IN-KIND-${Date.now()}`;
-
-  const payment = new Payment({
-    student: student._id,
-    admissionNumber: student.admissionNumber,
-    amountPaid: amountNumber,
-    paymentMethod: 'In-Kind',
-    transactionReference: finalReference,
-    payerName: payerName || '',
-    notes,
-    paymentDate: new Date(),
-    recordedBy: req.user?.id,
-    source: 'In-Kind Produce Entry',
-    inKindDetails: {
-      itemType: inKindItemType.trim(),
-      quantity: quantityNumber,
-      unitSizeKg: kgPerUnit,
-      unitPrice: unitPriceNumber,
-      ...(county && { county }),
-      ...(market && { market }),
-    },
-    status: 'confirmed',
-    confirmedAt: new Date(),
-    confirmedBy: req.user?.id,
-  });
-
-  await payment.save();
-
-  student.feeDetails.feesPaid += amountNumber;
-  student.feeDetails.remainingBalance = Math.max(
-    student.feeDetails.totalFees - student.feeDetails.feesPaid,
-    0
-  );
-
-  await student.save();
-
-  // ✅ Send SMS via helper
-  await require('../helpers/smsHelper').sendPaymentNotification(student, {
-    quantity: quantityNumber,
-    unitSize: kgPerUnit,
-    itemType: inKindItemType.trim(),
-    amount: amountNumber,
-    remainingBalance: student.feeDetails.remainingBalance,
-  });
-
-  res.json({
-    message: 'In-kind payment recorded successfully.',
-    updatedStudentBalance: student.feeDetails,
-  });
 });
-
 
 exports.getPendingInKind = asyncHandler(async (req, res) => {
     if (!['bursar', 'admin', 'director'].includes(req.user.role)) {
@@ -516,55 +596,291 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
     }
 });
 
+// exports.handlePaystackWebhook = async (req, res) => {
+//   // 1️⃣ Validate signature
+//   const secret = process.env.PAYSTACK_SECRET_KEY;
+//   const hash = crypto
+//     .createHmac('sha512', secret)
+//     .update(req.rawBody)
+//     .digest('hex');
+
+//   if (hash !== req.headers['x-paystack-signature']) {
+//     console.error('[WEBHOOK] Invalid signature');
+//     return res.status(400).send('Invalid signature');
+//   }
+
+//   const event = req.body;
+//   console.log('[WEBHOOK] Event received:', event.event);
+
+//   if (event.event === 'charge.success') {
+//     const tx = event.data;
+
+//     // Check if payment already exists
+//     const exists = await PendingPayment.findOne({ gatewayTransactionId: tx.reference });
+//     if (exists) {
+//       console.log(`[WEBHOOK] Payment ${tx.reference} already exists`);
+//       return res.status(200).send('Already recorded');
+//     }
+
+//     // Extract metadata
+//     const studentIdFromMeta = tx.metadata?.studentId;
+//     const admissionNumberUsed = tx.metadata?.studentAdmissionNumber || 
+//                               tx.metadata?.custom_fields?.find(f => f.variable_name === 'admission_number')?.value || '';
+//     const paymentSource = tx.metadata?.paymentSource || 'unknown';
+
+//     // --- Handle Parent App Payments Differently ---
+//     if (paymentSource === 'parent_app' && studentIdFromMeta) {
+//       const session = await mongoose.startSession();
+//       session.startTransaction();
+
+//       try {
+//         const student = await Student.findById(studentIdFromMeta).populate('parent').session(session);
+//         if (!student) {
+//           await session.abortTransaction();
+//           console.error(`Parent app payment student not found: ${studentIdFromMeta}`);
+//           return res.status(404).send('Student not found');
+//         }
+
+//         // Create the payment record
+//         const newPayment = new Payment({
+//           student: student._id,
+//           admissionNumber: student.admissionNumber,
+//           amountPaid: tx.amount / 100,
+//           paymentMethod: tx.channel === 'mobile_money' ? 'M-Pesa' : 'Paystack Online',
+//           transactionReference: tx.reference,
+//           payerName: `${tx.customer.first_name} ${tx.customer.last_name}`.trim() || 'Parent App Payer',
+//           notes: `Parent app payment via Paystack. Ref: ${tx.reference}`,
+//           paymentDate: tx.paid_at ? new Date(tx.paid_at) : new Date(),
+//           recordedBy: tx.metadata?.payerUserId || null,
+//           source: 'Parent App (Auto-Processed)',
+//         });
+//         await newPayment.save({ session });
+
+//         // Update student fees
+//         const currentExpectedFees = await calculateTotalExpectedFees(
+//           student.gradeLevel,
+//           student.boardingStatus,
+//           student.hasTransport,
+//           student.transportRoute
+//         );
+        
+//         const totalPaymentsMadeResult = await Payment.aggregate([
+//           { $match: { student: student._id } },
+//           { $group: { _id: null, total: { $sum: '$amountPaid' } } }
+//         ]).session(session);
+        
+//         const feesPaidForLife = totalPaymentsMadeResult[0]?.total || 0;
+//         student.feeDetails.totalFees = currentExpectedFees;
+//         student.feeDetails.feesPaid = feesPaidForLife;
+//         student.feeDetails.remainingBalance = currentExpectedFees - feesPaidForLife;
+//         await student.save({ session });
+
+//         // Create audit record in pending payments
+//         const pendingRecord = new PendingPayment({
+//           gatewayTransactionId: tx.reference,
+//           amount: tx.amount / 100,
+//           paymentMethod: newPayment.paymentMethod,
+//           paymentDate: tx.paid_at ? new Date(tx.paid_at) : new Date(),
+//           payerDetails: { 
+//             email: tx.customer.email, 
+//             phone: tx.customer.phone, 
+//             name: `${tx.customer.first_name} ${tx.customer.last_name}`.trim() 
+//           },
+//           student: student._id,
+//           admissionNumberUsed: student.admissionNumber,
+//           status: 'confirmed',
+//           confirmedBy: 'system',
+//           confirmedAt: new Date(),
+//           rawWebhookData: event,
+//           notes: 'Auto-confirmed parent app payment'
+//         });
+//         await pendingRecord.save({ session });
+
+//         await session.commitTransaction();
+//         console.log(`✅ Parent app payment for ${student.admissionNumber} processed`);
+        
+//         // Send SMS notification
+//         if (student.parent?.phone) {
+//           const parentPhone = normalizePhoneNumber(student.parent.phone);
+//           if (parentPhone) {
+//             const smsMessage = `Payment of KSh ${tx.amount/100} received for ${student.fullName}. Ref: ${tx.reference}. Balance: KSh ${student.feeDetails.remainingBalance || 0}`;
+//             sendSMS(parentPhone, smsMessage).catch(e => console.error('SMS send error:', e));
+//           }
+//         }
+
+//         return res.status(200).send('Parent app payment processed successfully');
+//       } catch (err) {
+//         await session.abortTransaction();
+//         console.error('Error processing parent app payment:', err);
+//         return res.status(500).send('Error processing parent app payment');
+//       } finally {
+//         session.endSession();
+//       }
+//     }
+
+//     // --- Handle Regular Payments ---
+//     const pendingPayment = new PendingPayment({
+//       gatewayTransactionId: tx.reference,
+//       amount: tx.amount / 100,
+//       currency: tx.currency,
+//       paymentMethod: tx.channel,
+//       status: 'pending',
+//       payerDetails: {
+//         email: tx.customer.email,
+//         phone: tx.customer.phone,
+//         name: `${tx.customer.first_name} ${tx.customer.last_name}`.trim()
+//       },
+//       paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(),
+//       admissionNumberUsed: admissionNumberUsed,
+//       paystackMetadata: tx
+//     });
+
+//     await pendingPayment.save();
+//     console.log(`[WEBHOOK] Pending payment created for ${tx.reference}`);
+//     return res.status(200).send('Payment recorded');
+//   }
+
+//   return res.status(200).send('Event ignored');
+// };
 
 exports.handlePaystackWebhook = async (req, res) => {
-  // 1️⃣ Validate signature
+  // Validate Paystack signature
   const secret = process.env.PAYSTACK_SECRET_KEY;
-  const hash = crypto
-    .createHmac('sha512', secret)
-    .update(req.rawBody)
-    .digest('hex');
-
+  const hash = crypto.createHmac('sha512', secret).update(req.rawBody).digest('hex');
+  
   if (hash !== req.headers['x-paystack-signature']) {
-    console.error('[WEBHOOK] Invalid signature');
-    return res.status(400).send('Invalid signature');
+    console.error('⚠️ Invalid webhook signature');
+    return res.status(401).send('Invalid signature');
   }
 
   const event = req.body;
-  console.log('[WEBHOOK] Event received:', event.event);
-
-  if (event.event === 'charge.success') {
-    const tx = event.data;
-
-    // Check if payment already exists
-    const exists = await PendingPayment.findOne({ gatewayTransactionId: tx.reference });
-    if (exists) {
-      console.log(`[WEBHOOK] Payment ${tx.reference} already exists`);
-      return res.status(200).send('Already recorded');
-    }
-
-    const pendingPayment = new PendingPayment({
-      gatewayTransactionId: tx.reference,
-      amount: tx.amount / 100, // Paystack uses kobo
-      currency: tx.currency,
-      paymentMethod: tx.channel,
-      status: 'pending',
-      payerDetails: {
-        email: tx.customer.email,
-        phone: tx.customer.phone,
-        name: `${tx.customer.first_name} ${tx.customer.last_name}`.trim()
-      },
-      paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(),
-      admissionNumberUsed: tx.metadata?.custom_fields?.find(f => f.variable_name === 'admission_number')?.value || '',
-      paystackMetadata: tx
-    });
-
-    await pendingPayment.save();
-    console.log(`[WEBHOOK] Pending payment created for ${tx.reference}`);
-    return res.status(200).send('Payment recorded');
+  
+  // Only process successful charges
+  if (event.event !== 'charge.success') {
+    return res.status(200).send('Event not handled');
   }
 
-  return res.status(200).send('Event ignored');
+  const transaction = event.data;
+  const metadata = transaction.metadata || {};
+  
+  try {
+    // Check for duplicate processing
+    const existingPayment = await Payment.findOne({ 
+      transactionReference: transaction.reference 
+    });
+    
+    if (existingPayment) {
+      return res.status(200).send('Payment already processed');
+    }
+
+    // Verify we have required student information
+    const studentId = metadata.studentId;
+    if (!studentId) {
+      console.error('Missing studentId in metadata');
+      return res.status(400).send('Student ID required');
+    }
+
+    // Start database transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Find the student with fee details
+      const student = await Student.findById(studentId)
+        .populate('parent')
+        .session(session);
+      
+      if (!student) {
+        await session.abortTransaction();
+        return res.status(404).send('Student not found');
+      }
+
+      // 2. Create the payment record
+      const paymentAmount = transaction.amount / 100; // Convert to KES
+      
+      const newPayment = new Payment({
+        student: student._id,
+        admissionNumber: student.admissionNumber,
+        amountPaid: paymentAmount,
+        paymentMethod: transaction.channel === 'mobile_money' ? 'M-Pesa' : 'Card',
+        transactionReference: transaction.reference,
+        payerName: `${transaction.customer.first_name || ''} ${transaction.customer.last_name || ''}`.trim(),
+        paymentDate: new Date(transaction.paid_at),
+        recordedBy: metadata.payerUserId || 'system',
+        source: 'Parent App',
+        notes: `Auto-confirmed payment via ${transaction.channel}`
+      });
+      
+      await newPayment.save({ session });
+
+      // 3. Update student's fee balance
+      const totalExpectedFees = await calculateTotalExpectedFees(
+        student.gradeLevel,
+        student.boardingStatus,
+        student.hasTransport,
+        student.transportRoute
+      );
+      
+      // Get sum of all payments for this student
+      const paymentsAggregate = await Payment.aggregate([
+        { $match: { student: student._id } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' } } }
+      ]).session(session);
+      
+      const totalPaid = paymentsAggregate[0]?.total || 0;
+      
+      // Update student record
+      student.feeDetails = {
+        totalFees: totalExpectedFees,
+        feesPaid: totalPaid,
+        remainingBalance: totalExpectedFees - totalPaid
+      };
+      
+      await student.save({ session });
+
+      // 4. Create audit log (optional)
+      const paymentLog = new PendingPayment({
+        gatewayTransactionId: transaction.reference,
+        amount: paymentAmount,
+        paymentMethod: newPayment.paymentMethod,
+        status: 'confirmed',
+        confirmedBy: metadata.payerUserId || null,
+        confirmedAt: new Date(),
+        student: student._id,
+        admissionNumberUsed: student.admissionNumber,
+        payerDetails: {
+          email: transaction.customer.email,
+          phone: transaction.customer.phone,
+          name: newPayment.payerName
+        },
+        notes: 'Auto-confirmed parent payment'
+      });
+      
+      await paymentLog.save({ session });
+
+      // Commit transaction
+      await session.commitTransaction();
+      
+      // 5. Send confirmation to parent
+      if (student.parent?.phone) {
+        const message = `Payment of KSh ${paymentAmount} received for ${student.fullName}. New balance: KSh ${student.feeDetails.remainingBalance}`;
+        await sendSMS(student.parent.phone, message);
+      }
+
+      return res.status(200).send('Payment processed successfully');
+      
+    } catch (err) {
+      await session.abortTransaction();
+      console.error('Transaction error:', err);
+      throw err;
+    } finally {
+      session.endSession();
+    }
+    
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    return res.status(500).send('Error processing payment');
+  }
 };
 
 // exports.getPendingPayments = asyncHandler(async (req, res) => {
