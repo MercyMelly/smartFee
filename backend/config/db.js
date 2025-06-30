@@ -15,7 +15,7 @@ const connectDB = async () => {
 };
 
 mongoose.connection.once('open', () => {
-  console.log(`✅ Connected to database: ${mongoose.connection.name}`);
+  console.log(`Connected to database: ${mongoose.connection.name}`);
 });
 
 

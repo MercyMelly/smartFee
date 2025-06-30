@@ -10,7 +10,7 @@ import LandingPage from './screens/landingpage';
 import Login from './screens/login';
 import Signup from './screens/signup';
 import ForgotPassword from './screens/forgotPassword';
-import ResetPassword from './screens/resetPassword';
+// import ResetPassword from './screens/resetPassword';
 
 // Parent Screens
 import ParentDashboard from './screens/parentsHome'; 
@@ -76,14 +76,9 @@ export default function App() {
                         <Stack.Screen name="signup" component={Signup} />
                         <Stack.Screen name="login" component={Login} />
                         <Stack.Screen name="forgotPassword" component={ForgotPassword} />
-                        <Stack.Screen name="resetPassword" component={ResetPassword} />
                         <Stack.Screen name="ParentSignup" component={ParentSignupScreen} />
-                        {/* If any of these lead to bursar-only screens, they should be authenticated */}
-                        {/* For now, removing the problematic pendingPayments screen from here */}
-                        {/* <Stack.Screen name="pendingPayments" component={PendingPaymentsScreen} /> */}
                     </>
                 ) : role === 'admin' || role === 'director' ? (
-                    // Screens for Admin/Director roles
                     <>
                         <Stack.Screen name="adminHome" component={AdminHome} />
                         <Stack.Screen

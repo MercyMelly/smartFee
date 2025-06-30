@@ -444,7 +444,6 @@ exports.getPaymentsByStudent = asyncHandler(async (req, res) => {
         }
 
         const payments = await Payment.find({ student: student._id })
-            .populate('recordedBy', 'fullName')
             .sort({ paymentDate: -1 })
             .lean();
 
@@ -499,7 +498,7 @@ exports.generateReceipt = asyncHandler(async (req, res) => {
     try {
         const { paymentId } = req.params;
 
-        const payment = await Payment.findById(paymentId).populate('student').populate('recordedBy', 'fullName');
+      const payment = await Payment.findById(paymentId).populate('student');
         if (!payment) {
             return res.status(404).json({ message: 'Payment record not found.' });
         }
@@ -511,7 +510,7 @@ exports.generateReceipt = asyncHandler(async (req, res) => {
 
         const currentBalance = student.feeDetails.remainingBalance;
 
-        const pdfBuffer = await generateReceiptPdf(payment.toObject(), student.toObject(), currentBalance, payment.recordedBy?.fullName);
+        const pdfBuffer = await generateReceiptPdf(payment.toObject(), student.toObject(), currentBalance, null);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=receipt_${payment.transactionReference || payment._id}.pdf`);
@@ -522,6 +521,79 @@ exports.generateReceipt = asyncHandler(async (req, res) => {
         res.status(500).json({ message: 'Server error generating receipt.', error: error.message });
     }
 });
+
+// exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
+//     console.log("📡 [Backend] Paystack Transaction Initialization Hit");
+
+//     if (req.user.role !== 'parent') {
+//         res.status(403);
+//         throw new Error('Not authorized to initiate payments.');
+//     }
+
+//     const { studentId, amount: requestedAmount, payerEmail } = req.body;
+
+//     if (!studentId || !requestedAmount || requestedAmount <= 0 || !payerEmail) {
+//         res.status(400);
+//         throw new Error('Missing required fields: studentId, amount, payerEmail.');
+//     }
+
+//     const authenticatedParentUser = req.user; 
+
+//     const student = await Student.findById(studentId);
+//     if (!student) {
+//         res.status(404);
+//         throw new Error('Student not found for the provided ID.');
+//     }
+
+//     const isAuthorized = (
+//         (student.parent && student.parent.email && student.parent.email === authenticatedParentUser.email) ||
+//         (student.parent && student.parent.phone && normalizePhoneNumber(student.parent.phone) === normalizePhoneNumber(authenticatedParentUser.phoneNumber))
+//     );
+
+//     if (!isAuthorized) {
+//         console.warn(`[Backend] Unauthorized payment initiation attempt: Student ${student.admissionNumber} not linked to user ${authenticatedParentUser.email}`);
+//         res.status(403);
+//         throw new Error('You are not authorized to pay for this student.');
+//     }
+
+//     const amountInKobo = Math.round(requestedAmount * 100); 
+//     const reference = `TDEC_PAY_${student.admissionNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+//     try {
+//         const response = await axios.post(
+//             'https://api.paystack.co/transaction/initialize',
+//             {
+//                 email: payerEmail,
+//                 amount: amountInKobo,
+//                 reference: reference,
+//                 callback_url: `${FRONTEND_BASE_URL_FOR_REDIRECT}/--/payment-success`, 
+//                 metadata: {
+//                     studentId: student._id.toString(), 
+//                     studentAdmissionNumber: student.admissionNumber, 
+//                     studentFullName: student.fullName,
+//                     payerUserId: authenticatedParentUser._id.toString(),
+//                     payerEmail: authenticatedParentUser.email,
+//                     paymentSource: 'parent_app', // Indicate source for webhook
+//                 },
+//                 currency: 'KES', 
+//             },
+//             {
+//                 headers: getPaystackHeaders(),
+//             }
+//         );
+
+//         res.status(200).json({
+//             message: 'Payment initiation successful',
+//             authorization_url: response.data.data.authorization_url, 
+//             reference: reference, 
+//         });
+
+//     } catch (error) {
+//         console.error('[Backend] Error calling Paystack Initialize API:', error.response?.data || error.message);
+//         res.status(500);
+//         throw new Error(`Failed to initialize Paystack transaction: ${error.response?.data?.message || error.message}`);
+//     }
+// });
 
 exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
     console.log("📡 [Backend] Paystack Transaction Initialization Hit");
@@ -538,7 +610,7 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
         throw new Error('Missing required fields: studentId, amount, payerEmail.');
     }
 
-    const authenticatedParentUser = req.user; 
+    const authenticatedParentUser = req.user;
 
     const student = await Student.findById(studentId);
     if (!student) {
@@ -557,7 +629,7 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
         throw new Error('You are not authorized to pay for this student.');
     }
 
-    const amountInKobo = Math.round(requestedAmount * 100); 
+    const amountInKobo = Math.round(requestedAmount * 100);
     const reference = `TDEC_PAY_${student.admissionNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
     try {
@@ -567,16 +639,16 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
                 email: payerEmail,
                 amount: amountInKobo,
                 reference: reference,
-                callback_url: `${FRONTEND_BASE_URL_FOR_REDIRECT}/--/payment-success`, 
+                callback_url: `${FRONTEND_BASE_URL_FOR_REDIRECT}/--/payment-success`,
                 metadata: {
-                    studentId: student._id.toString(), 
-                    studentAdmissionNumber: student.admissionNumber, 
+                    studentId: student._id.toString(),
+                    studentAdmissionNumber: student.admissionNumber,
                     studentFullName: student.fullName,
                     payerUserId: authenticatedParentUser._id.toString(),
                     payerEmail: authenticatedParentUser.email,
-                    paymentSource: 'parent_app', // Indicate source for webhook
+                    paymentSource: 'parent_app'
                 },
-                currency: 'KES', 
+                currency: 'KES'
             },
             {
                 headers: getPaystackHeaders(),
@@ -585,8 +657,8 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
 
         res.status(200).json({
             message: 'Payment initiation successful',
-            authorization_url: response.data.data.authorization_url, 
-            reference: reference, 
+            authorization_url: response.data.data.authorization_url,
+            reference: reference,
         });
 
     } catch (error) {
@@ -596,155 +668,9 @@ exports.initializePaystackTransaction = asyncHandler(async (req, res) => {
     }
 });
 
-// exports.handlePaystackWebhook = async (req, res) => {
-//   // 1️⃣ Validate signature
-//   const secret = process.env.PAYSTACK_SECRET_KEY;
-//   const hash = crypto
-//     .createHmac('sha512', secret)
-//     .update(req.rawBody)
-//     .digest('hex');
-
-//   if (hash !== req.headers['x-paystack-signature']) {
-//     console.error('[WEBHOOK] Invalid signature');
-//     return res.status(400).send('Invalid signature');
-//   }
-
-//   const event = req.body;
-//   console.log('[WEBHOOK] Event received:', event.event);
-
-//   if (event.event === 'charge.success') {
-//     const tx = event.data;
-
-//     // Check if payment already exists
-//     const exists = await PendingPayment.findOne({ gatewayTransactionId: tx.reference });
-//     if (exists) {
-//       console.log(`[WEBHOOK] Payment ${tx.reference} already exists`);
-//       return res.status(200).send('Already recorded');
-//     }
-
-//     // Extract metadata
-//     const studentIdFromMeta = tx.metadata?.studentId;
-//     const admissionNumberUsed = tx.metadata?.studentAdmissionNumber || 
-//                               tx.metadata?.custom_fields?.find(f => f.variable_name === 'admission_number')?.value || '';
-//     const paymentSource = tx.metadata?.paymentSource || 'unknown';
-
-//     // --- Handle Parent App Payments Differently ---
-//     if (paymentSource === 'parent_app' && studentIdFromMeta) {
-//       const session = await mongoose.startSession();
-//       session.startTransaction();
-
-//       try {
-//         const student = await Student.findById(studentIdFromMeta).populate('parent').session(session);
-//         if (!student) {
-//           await session.abortTransaction();
-//           console.error(`Parent app payment student not found: ${studentIdFromMeta}`);
-//           return res.status(404).send('Student not found');
-//         }
-
-//         // Create the payment record
-//         const newPayment = new Payment({
-//           student: student._id,
-//           admissionNumber: student.admissionNumber,
-//           amountPaid: tx.amount / 100,
-//           paymentMethod: tx.channel === 'mobile_money' ? 'M-Pesa' : 'Paystack Online',
-//           transactionReference: tx.reference,
-//           payerName: `${tx.customer.first_name} ${tx.customer.last_name}`.trim() || 'Parent App Payer',
-//           notes: `Parent app payment via Paystack. Ref: ${tx.reference}`,
-//           paymentDate: tx.paid_at ? new Date(tx.paid_at) : new Date(),
-//           recordedBy: tx.metadata?.payerUserId || null,
-//           source: 'Parent App (Auto-Processed)',
-//         });
-//         await newPayment.save({ session });
-
-//         // Update student fees
-//         const currentExpectedFees = await calculateTotalExpectedFees(
-//           student.gradeLevel,
-//           student.boardingStatus,
-//           student.hasTransport,
-//           student.transportRoute
-//         );
-        
-//         const totalPaymentsMadeResult = await Payment.aggregate([
-//           { $match: { student: student._id } },
-//           { $group: { _id: null, total: { $sum: '$amountPaid' } } }
-//         ]).session(session);
-        
-//         const feesPaidForLife = totalPaymentsMadeResult[0]?.total || 0;
-//         student.feeDetails.totalFees = currentExpectedFees;
-//         student.feeDetails.feesPaid = feesPaidForLife;
-//         student.feeDetails.remainingBalance = currentExpectedFees - feesPaidForLife;
-//         await student.save({ session });
-
-//         // Create audit record in pending payments
-//         const pendingRecord = new PendingPayment({
-//           gatewayTransactionId: tx.reference,
-//           amount: tx.amount / 100,
-//           paymentMethod: newPayment.paymentMethod,
-//           paymentDate: tx.paid_at ? new Date(tx.paid_at) : new Date(),
-//           payerDetails: { 
-//             email: tx.customer.email, 
-//             phone: tx.customer.phone, 
-//             name: `${tx.customer.first_name} ${tx.customer.last_name}`.trim() 
-//           },
-//           student: student._id,
-//           admissionNumberUsed: student.admissionNumber,
-//           status: 'confirmed',
-//           confirmedBy: 'system',
-//           confirmedAt: new Date(),
-//           rawWebhookData: event,
-//           notes: 'Auto-confirmed parent app payment'
-//         });
-//         await pendingRecord.save({ session });
-
-//         await session.commitTransaction();
-//         console.log(`✅ Parent app payment for ${student.admissionNumber} processed`);
-        
-//         // Send SMS notification
-//         if (student.parent?.phone) {
-//           const parentPhone = normalizePhoneNumber(student.parent.phone);
-//           if (parentPhone) {
-//             const smsMessage = `Payment of KSh ${tx.amount/100} received for ${student.fullName}. Ref: ${tx.reference}. Balance: KSh ${student.feeDetails.remainingBalance || 0}`;
-//             sendSMS(parentPhone, smsMessage).catch(e => console.error('SMS send error:', e));
-//           }
-//         }
-
-//         return res.status(200).send('Parent app payment processed successfully');
-//       } catch (err) {
-//         await session.abortTransaction();
-//         console.error('Error processing parent app payment:', err);
-//         return res.status(500).send('Error processing parent app payment');
-//       } finally {
-//         session.endSession();
-//       }
-//     }
-
-//     // --- Handle Regular Payments ---
-//     const pendingPayment = new PendingPayment({
-//       gatewayTransactionId: tx.reference,
-//       amount: tx.amount / 100,
-//       currency: tx.currency,
-//       paymentMethod: tx.channel,
-//       status: 'pending',
-//       payerDetails: {
-//         email: tx.customer.email,
-//         phone: tx.customer.phone,
-//         name: `${tx.customer.first_name} ${tx.customer.last_name}`.trim()
-//       },
-//       paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(),
-//       admissionNumberUsed: admissionNumberUsed,
-//       paystackMetadata: tx
-//     });
-
-//     await pendingPayment.save();
-//     console.log(`[WEBHOOK] Pending payment created for ${tx.reference}`);
-//     return res.status(200).send('Payment recorded');
-//   }
-
-//   return res.status(200).send('Event ignored');
-// };
 
 exports.handlePaystackWebhook = async (req, res) => {
-  // Validate Paystack signature
+  // Validate signature
   const secret = process.env.PAYSTACK_SECRET_KEY;
   const hash = crypto.createHmac('sha512', secret).update(req.rawBody).digest('hex');
   
@@ -754,8 +680,7 @@ exports.handlePaystackWebhook = async (req, res) => {
   }
 
   const event = req.body;
-  
-  // Only process successful charges
+
   if (event.event !== 'charge.success') {
     return res.status(200).send('Event not handled');
   }
@@ -764,40 +689,33 @@ exports.handlePaystackWebhook = async (req, res) => {
   const metadata = transaction.metadata || {};
   
   try {
-    // Check for duplicate processing
     const existingPayment = await Payment.findOne({ 
       transactionReference: transaction.reference 
     });
-    
+
     if (existingPayment) {
       return res.status(200).send('Payment already processed');
     }
 
-    // Verify we have required student information
     const studentId = metadata.studentId;
     if (!studentId) {
-      console.error('Missing studentId in metadata');
-      return res.status(400).send('Student ID required');
+      console.warn(`[Webhook] Missing studentId in metadata. Reference: ${transaction.reference}`);
+      return res.status(200).send('Ignored: No studentId');
     }
 
-    // Start database transaction
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // 1. Find the student with fee details
-      const student = await Student.findById(studentId)
-        .populate('parent')
-        .session(session);
+      const student = await Student.findById(studentId).populate('parent').session(session);
       
       if (!student) {
         await session.abortTransaction();
         return res.status(404).send('Student not found');
       }
 
-      // 2. Create the payment record
-      const paymentAmount = transaction.amount / 100; // Convert to KES
-      
+      const paymentAmount = transaction.amount / 100;
+
       const newPayment = new Payment({
         student: student._id,
         admissionNumber: student.admissionNumber,
@@ -810,41 +728,37 @@ exports.handlePaystackWebhook = async (req, res) => {
         source: 'Parent App',
         notes: `Auto-confirmed payment via ${transaction.channel}`
       });
-      
+
       await newPayment.save({ session });
 
-      // 3. Update student's fee balance
       const totalExpectedFees = await calculateTotalExpectedFees(
         student.gradeLevel,
         student.boardingStatus,
         student.hasTransport,
         student.transportRoute
       );
-      
-      // Get sum of all payments for this student
+
       const paymentsAggregate = await Payment.aggregate([
         { $match: { student: student._id } },
         { $group: { _id: null, total: { $sum: '$amountPaid' } } }
       ]).session(session);
-      
+
       const totalPaid = paymentsAggregate[0]?.total || 0;
-      
-      // Update student record
+
       student.feeDetails = {
         totalFees: totalExpectedFees,
         feesPaid: totalPaid,
         remainingBalance: totalExpectedFees - totalPaid
       };
-      
+
       await student.save({ session });
 
-      // 4. Create audit log (optional)
       const paymentLog = new PendingPayment({
         gatewayTransactionId: transaction.reference,
         amount: paymentAmount,
         paymentMethod: newPayment.paymentMethod,
         status: 'confirmed',
-        confirmedBy: metadata.payerUserId || null,
+        recordedBy: metadata.payerUserId || null, 
         confirmedAt: new Date(),
         student: student._id,
         admissionNumberUsed: student.admissionNumber,
@@ -855,13 +769,11 @@ exports.handlePaystackWebhook = async (req, res) => {
         },
         notes: 'Auto-confirmed parent payment'
       });
-      
+
       await paymentLog.save({ session });
 
-      // Commit transaction
       await session.commitTransaction();
-      
-      // 5. Send confirmation to parent
+
       if (student.parent?.phone) {
         const message = `Payment of KSh ${paymentAmount} received for ${student.fullName}. New balance: KSh ${student.feeDetails.remainingBalance}`;
         await sendSMS(student.parent.phone, message);
@@ -882,6 +794,146 @@ exports.handlePaystackWebhook = async (req, res) => {
     return res.status(500).send('Error processing payment');
   }
 };
+
+// exports.handlePaystackWebhook = async (req, res) => {
+//   // Validate Paystack signature
+//   const secret = process.env.PAYSTACK_SECRET_KEY;
+//   const hash = crypto.createHmac('sha512', secret).update(req.rawBody).digest('hex');
+  
+//   if (hash !== req.headers['x-paystack-signature']) {
+//     console.error('⚠️ Invalid webhook signature');
+//     return res.status(401).send('Invalid signature');
+//   }
+
+//   const event = req.body;
+  
+//   // Only process successful charges
+//   if (event.event !== 'charge.success') {
+//     return res.status(200).send('Event not handled');
+//   }
+
+//   const transaction = event.data;
+//   const metadata = transaction.metadata || {};
+  
+//   try {
+//     // Check for duplicate processing
+//     const existingPayment = await Payment.findOne({ 
+//       transactionReference: transaction.reference 
+//     });
+    
+//     if (existingPayment) {
+//       return res.status(200).send('Payment already processed');
+//     }
+
+//     // Verify we have required student information
+//     const studentId = metadata.studentId;
+//     if (!studentId) {
+//       console.error('Missing studentId in metadata');
+//       return res.status(400).send('Student ID required');
+//     }
+
+//     // Start database transaction
+//     const session = await mongoose.startSession();
+//     session.startTransaction();
+
+//     try {
+//       // 1. Find the student with fee details
+//       const student = await Student.findById(studentId)
+//         .populate('parent')
+//         .session(session);
+      
+//       if (!student) {
+//         await session.abortTransaction();
+//         return res.status(404).send('Student not found');
+//       }
+
+//       // 2. Create the payment record
+//       const paymentAmount = transaction.amount / 100; // Convert to KES
+      
+//       const newPayment = new Payment({
+//         student: student._id,
+//         admissionNumber: student.admissionNumber,
+//         amountPaid: paymentAmount,
+//         paymentMethod: transaction.channel === 'mobile_money' ? 'M-Pesa' : 'Card',
+//         transactionReference: transaction.reference,
+//         payerName: `${transaction.customer.first_name || ''} ${transaction.customer.last_name || ''}`.trim(),
+//         paymentDate: new Date(transaction.paid_at),
+//         recordedBy: metadata.payerUserId || 'system',
+//         source: 'Parent App',
+//         notes: `Auto-confirmed payment via ${transaction.channel}`
+//       });
+      
+//       await newPayment.save({ session });
+
+//       // 3. Update student's fee balance
+//       const totalExpectedFees = await calculateTotalExpectedFees(
+//         student.gradeLevel,
+//         student.boardingStatus,
+//         student.hasTransport,
+//         student.transportRoute
+//       );
+      
+//       // Get sum of all payments for this student
+//       const paymentsAggregate = await Payment.aggregate([
+//         { $match: { student: student._id } },
+//         { $group: { _id: null, total: { $sum: '$amountPaid' } } }
+//       ]).session(session);
+      
+//       const totalPaid = paymentsAggregate[0]?.total || 0;
+      
+//       // Update student record
+//       student.feeDetails = {
+//         totalFees: totalExpectedFees,
+//         feesPaid: totalPaid,
+//         remainingBalance: totalExpectedFees - totalPaid
+//       };
+      
+//       await student.save({ session });
+
+//       // 4. Create audit log (optional)
+//       const paymentLog = new PendingPayment({
+//         gatewayTransactionId: transaction.reference,
+//         amount: paymentAmount,
+//         paymentMethod: newPayment.paymentMethod,
+//         status: 'confirmed',
+//         confirmedBy: metadata.payerUserId || null,
+//         confirmedAt: new Date(),
+//         student: student._id,
+//         admissionNumberUsed: student.admissionNumber,
+//         payerDetails: {
+//           email: transaction.customer.email,
+//           phone: transaction.customer.phone,
+//           name: newPayment.payerName
+//         },
+//         notes: 'Auto-confirmed parent payment'
+//       });
+      
+//       await paymentLog.save({ session });
+
+//       // Commit transaction
+//       await session.commitTransaction();
+      
+//       // 5. Send confirmation to parent
+//       if (student.parent?.phone) {
+//         const message = `Payment of KSh ${paymentAmount} received for ${student.fullName}. New balance: KSh ${student.feeDetails.remainingBalance}`;
+//         await sendSMS(student.parent.phone, message);
+//       }
+
+//       return res.status(200).send('Payment processed successfully');
+      
+//     } catch (err) {
+//       await session.abortTransaction();
+//       console.error('Transaction error:', err);
+//       throw err;
+//     } finally {
+//       session.endSession();
+//     }
+    
+//   } catch (error) {
+//     console.error('Webhook processing error:', error);
+//     return res.status(500).send('Error processing payment');
+//   }
+// };
 
 // exports.getPendingPayments = asyncHandler(async (req, res) => {
 //     if (!['bursar', 'admin', 'director'].includes(req.user.role)) {

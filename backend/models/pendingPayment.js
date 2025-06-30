@@ -47,14 +47,15 @@ const PendingPaymentSchema = new mongoose.Schema({
         type: Object
     },
     // Who confirmed it (if confirmed)
-    confirmedBy: {
-        type: mongoose.Schema.Types.Mixed, // Allows both ObjectId and string
-        required: false
-  },
-    // confirmedBy: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'User' // Assuming your bursar users are in a 'User' model
-    // },
+//     confirmedBy: {
+//         type: mongoose.Schema.Types.Mixed, // Allows both ObjectId and string
+//         required: false
+//   },
+
+    recordedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     confirmedAt: {
         type: Date
     },

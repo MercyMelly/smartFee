@@ -1,11 +1,46 @@
-const otpStore = new Map(); 
+// const otpStore = new Map(); 
+
+// const saveOtp = (email, otp) => {
+//   otpStore.set(email, {
+//     otp,
+//     expiresAt: Date.now() + 5 * 60 * 1000, 
+//   });
+// };
+
+// const verifyOtp = (email, inputOtp) => {
+//   const record = otpStore.get(email);
+//   if (!record) return false;
+
+//   const isExpired = Date.now() > record.expiresAt;
+//   const isMatch = record.otp === String(inputOtp);
+
+//   console.log("Stored OTP:", record.otp);
+//   console.log("Input OTP:", inputOtp);
+//   console.log("Expired:", isExpired);
+//   console.log("Match:", isMatch);
+
+//   if (!isExpired && isMatch) {
+//     otpStore.delete(email); 
+//     return true;
+//   }
+
+//   return false;
+// };
+
+
+// module.exports = { saveOtp, verifyOtp };
+
+
+const otpStore = new Map();
+
 
 const saveOtp = (email, otp) => {
   otpStore.set(email, {
     otp,
-    expiresAt: Date.now() + 5 * 60 * 1000, 
+    expiresAt: Date.now() + 5 * 60 * 1000
   });
 };
+
 
 const verifyOtp = (email, inputOtp) => {
   const record = otpStore.get(email);
@@ -14,18 +49,11 @@ const verifyOtp = (email, inputOtp) => {
   const isExpired = Date.now() > record.expiresAt;
   const isMatch = record.otp === String(inputOtp);
 
-  console.log("Stored OTP:", record.otp);
-  console.log("Input OTP:", inputOtp);
-  console.log("Expired:", isExpired);
-  console.log("Match:", isMatch);
-
   if (!isExpired && isMatch) {
-    otpStore.delete(email); 
+    otpStore.delete(email);
     return true;
   }
-
   return false;
 };
-
 
 module.exports = { saveOtp, verifyOtp };

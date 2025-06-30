@@ -16,9 +16,9 @@ import { useAuthStore } from '../store/authStore';
 
 const SettingsScreen = () => {
     const navigation = useNavigation();
-    const { logout, user } = useAuthStore(); // Destructure user from useAuthStore
+    const { logout, user } = useAuthStore(); 
     const route = useRoute();
-    const token = route.params?.token || useAuthStore((state) => state.token); // Keep token for resetPassword navigation
+    // const token = route.params?.token || useAuthStore((state) => state.token); 
 
     // Function to handle logout confirmation
     const handleLogout = useCallback(() => {
@@ -35,10 +35,9 @@ const SettingsScreen = () => {
         ]);
     }, [logout]);
 
-    // Function to navigate to reset password screen
-    const handleResetPassword = useCallback(() => {
-        navigation.navigate('resetPassword', { token: token });
-    }, [navigation, token]);
+    // const handleResetPassword = useCallback(() => {
+    //     navigation.navigate('forgotPassword');
+    // }, [navigation]);
 
     // Reusable component for setting options
     const SettingsOption = ({ iconName, title, onPress, isDestructive = false }) => (
@@ -96,11 +95,11 @@ const SettingsScreen = () => {
                         <Text style={styles.sectionTitle}>
                             <Icon name="cog-outline" size={20} color="#388E3C" /> Account Actions
                         </Text>
-                        <SettingsOption
+                        {/* <SettingsOption
                             iconName="lock-reset"
                             title="Reset Password"
                             onPress={handleResetPassword}
-                        />
+                        /> */}
                         <SettingsOption
                             iconName="logout"
                             title="Log Out"
